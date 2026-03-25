@@ -1,0 +1,32 @@
+[project]
+name = "grclpr"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Yaniv Shulman",email = "yaniv@shulman.info"}
+]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "rsklpr (>=2.0.0,<3.0.0)",
+    "matplotlib (>=3.10.7,<4.0.0)",
+    "networkx (>=3.5,<4.0)",
+    "notebook (>=7.4.7,<8.0.0)",
+    "scikit-learn (>=1.7.2,<2.0.0)",
+    "numpy (>=2.3.4,<3.0.0)",
+    "pandas (>=2.3.3,<3.0.0)",
+    "joblib (>=1.5.2,<2.0.0)",
+    "cartopy (>=0.25.0,<0.26.0)",
+    "scipy-stubs (>=1.16.3,<1.17.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+    "black[jupyter] (>=25.9.0,<26.0.0)",
+    "pandas-stubs (>=2.3.3,<2.4.0)"
+]
