@@ -1,0 +1,877 @@
+\documentclass[preprint,1p,times,authoryear]{elsarticle}
+
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\makeatletter
+\def\ps@pprintTitle{%
+ \let\@oddhead\@empty
+ \let\@evenhead\@empty
+ \def\@oddfoot{}%
+ \let\@evenfoot\@oddfoot}
+\makeatother
+
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{graphicx}
+\usepackage{natbib}
+\usepackage{enumitem}
+\usepackage{lineno}
+\usepackage{subcaption}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+    citecolor=blue,
+}
+
+\graphicspath{ {./graphics/} }
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\newtheorem{definition}{Definition}
+\newtheorem{assumption}{Assumption}
+
+% Custom math operators
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator{\Var}{Var}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\D}{\mathcal{D}}
+\newcommand{\K}{\mathcal{K}}
+\newcommand{\Lcal}{\mathcal{L}}
+\newcommand{\Hcal}{\mathcal{H}}
+\newcommand{\I}{\mathbb{I}}
+\newcommand{\Jcal}{\mathcal{J}}
+
+\linenumbers
+
+\begin{document}
+\begin{frontmatter}
+
+\vspace*{\fill}
+\begin{center}
+This is a draft version of work in progress, content will be revisited in subsequent versions.
+\end{center}
+\vspace*{\fill}
+
+\title{Generalized Local Polynomial Regression with Decomposed Context-Aware Kernels}
+\author{Yaniv Shulman}
+\address{yaniv@shulman.info}
+\date{\today}
+
+\begin{abstract}
+Local Polynomial Regression (LPR) is a powerful tool for nonparametric smoothing, yet it traditionally suffers from a "Euclidean tautology": the variables used to define the local neighborhood are identical to those used in the polynomial fit. This restricts its ability to handle complex domains where the regression function varies across non-Euclidean structures, such as graphs, manifolds, or discrete categories, while remaining locally smooth in the primary feature space. We propose \emph{Generalized Context-Aware LPR} (GC-LPR), a framework that decouples the fitting chart ($Z$) from the weighting context ($C$). By adopting a modeling convention where the conditional mean depends jointly on $Z$ and $C$ ($Y = m(Z, C) + \varepsilon$), our estimator acts as a "projected smoother": it isolates a slice of the data on the manifold defined by $C$ via a compound product kernel, and performs a polynomial fit over $Z$ within that slice. This enables practitioners to model responses that vary across graphs, networks, or categorical strata while retaining the interpretability and bias properties of LPR in a primary Euclidean feature space. Theoretical analysis shows that, under standard regularity conditions, GC-LPR preserves the bias-reduction properties of standard LPR w.r.t the Euclidean features around the induced context-smoothed target, while allowing arbitrary, non-Euclidean contexts to modulate the local estimation. We demonstrate the efficacy of this approach on geospatial and network-structured datasets.
+\end{abstract}
+\end{frontmatter}
+
+\section{Introduction}
+\label{s:Introduction}
+
+Local Polynomial Regression (LPR) is a cornerstone of nonparametric smoothing, prized for its ability to adapt locally without committing to a rigid global functional form. Its theoretical virtues are well-established: minimax efficiency, automatic boundary-bias correction, and design adaptation \citep{fan1996local, loader1999local}. However, classical LPR suffers from a restrictive "Euclidean tautology": the variables used to define the local neighborhood are identical to those used in the polynomial fit.
+
+This constraint is increasingly inadequate in modern domains where the notion of proximity is multi-faceted. Observations may be ``near'' geographically, connected via a transport network, or similar in terms of categorical attributes, even if they are distant in the feature space of interest. Furthermore, relying on a monolithic kernel over all available features exacerbates the ``curse of dimensionality'' \citep{stone1982optimal}, degrading performance as the dimension of the predictor space grows. While product kernels have been successfully applied to mixed-data regression \citep{li2004nonparametric}, existing frameworks largely maintain a one-to-one mapping between the variables in the regressor and the variables in the weighting function.
+
+Canonical examples of this limitation appear in geospatial analysis and graph signal processing. One may wish to model a response based on tabular features (e.g., housing characteristics) while defining locality using a non-Euclidean metric (e.g., network travel time) or a manifold structure. Prior art addresses these challenges largely outside the LPR framework; for instance, Graph Signal Processing (GSP) introduces global Laplacian regularization \citep{shuman2013emerging}. What remains missing is a method that performs interpretable local polynomial regression in a primary Euclidean chart $Z$ while allowing arbitrary, non-Euclidean "contexts" to determine the relevant data slice. 
+
+We answer this challenge with \emph{Generalized Context-Aware LPR} (GC-LPR). We propose a framework that decouples the fitting space from the weighting space by introducing a \emph{compound product kernel} $K_c$ that factorizes into a Euclidean component on $Z$ and additional components on auxiliary contexts $C_1,\ldots,C_J$ (formal definition in Section~\ref{s:Generalized Context-Aware LPR}). The Euclidean factor governs the local polynomial fit in the $Z$-chart, while the context factors softly restrict the neighborhood using domain-appropriate similarity notions, ranging from discrete labels to nodes on a graph.
+
+Conceptually, we move beyond the assumption that context only affects variance. Instead, we posit that the true regression function is context-dependent, taking the form $m(Z, C)$. Our estimator utilizes context kernels to isolate the relevant manifold or "slice" of the data defined by $C$, effectively performing a polynomial fit on $Z$ conditional on this soft selection. This allows the structural relationship between $Z$ and $Y$ to change smoothly or discontinuously across the context space (e.g., across a river or a network boundary). 
+
+We further demonstrate the composability of this framework by integrating a response-based robustness factor $K_r$, following recent work by \citet{shulman2025robust}, to handle outliers without distorting the definition of locality. The remainder of this paper reviews the relevant literature, formalizes the estimator, analyzes its asymptotic properties, and validates its performance on geospatial and network-structured datasets.
+
+\section{Background and Notation}
+\label{s:Background}
+This section establishes the formal notation and background for the methods discussed. We first review the canonical framework for Local Polynomial Regression (LPR) to define its objective and properties. Finally, we summarize the RSKLPR framework, which introduces a response-based kernel for robustness.
+
+\subsection{Local Polynomial Regression}
+\label{s:background_lpr}
+
+Let $\D_{n}=\{(Z_i,Y_i)\}_{i=1}^{n}$ be i.i.d.\ with $Z_i\in\R^d$ and $Y_i\in\R$. Fix $z\in\R^d$ and write $t_i:=Z_i-z$. Let $\mathcal{A}_p=\{\alpha\in\mathbb{N}_0^d:\ |\alpha|\le p\}$, $t^\alpha=\prod_{j=1}^{d} t_j^{\alpha_j}$, and
+\[
+r_p(t):=(t^\alpha)_{\alpha\in\mathcal{A}_p}\in\R^{M},\qquad M=\binom{p+d}{d}.
+\]
+The local polynomial is $g_z(u;\beta)=r_p(u-z)^\top\beta(z)$, and the estimator of $m(z)$ is $\hat m(z):=\hat\beta_0(z)$, the intercept.
+
+Let $K:\R^d\to[0,\infty)$ be a kernel and $H$ a positive-definite bandwidth matrix. With $K_H(t):=|H|^{-1}K(H^{-1}t)$, where $|H|:=\det(H)$ and in the isotropic case $H=hI_d$ gives $K_H(t)=h^{-d}K(t/h)$. 
+In empirical objectives we use the unnormalized weight $K(H^{-1}t)$, since $|H|$ is constant in $i$, so it does not affect the minimizer. The empirical LPR objective is:
+\begin{equation}
+\label{eq:lpr_loss}
+\Lcal_{lpr}(z;\D_n,H)=\sum_{i=1}^{n}\big(Y_i-r_p(t_i)^\top\beta(z)\big)^2 \, K(H^{-1}t_i).
+\end{equation}
+Let $R$ be the $n\times M$ design with $i$th row $r_p(t_i)^\top$, $W_z:=\mathrm{diag}\{K(H^{-1}t_1),\ldots,K(H^{-1}t_n)\}$, and $Y:=(Y_1,\ldots,Y_n)^\top$. When $R^\top W_z R$ is nonsingular,
+\[
+\hat\beta(z)=(R^\top W_z R)^{-1}R^\top W_z Y,\qquad \hat m(z)=e_1^\top\hat\beta(z).
+\]
+The population analogue (with the normalized kernel) is
+\begin{equation}
+\label{eq:lpr_pop}
+\Jcal_{std}(z;\beta)=\iint\big(v-g_z(u;\beta)\big)^2 K_H(u-z)\, f_{ZY}(u,v)\, dv\,du.
+\end{equation}
+Under standard conditions (continuity of $f_Z$ with $f_Z(z)>0$; $m\in C^{p+1}$ near $z$; symmetric integrable $K$ with unit mass; $H\to0$ and $n|H|\to\infty$ in the isotropic case), the local linear estimator ($p=1$) is design-adaptive and, for interior $z$,
+\[
+\mathrm{Bias}\{\hat m(z)\}=O(\|H\|^{2}),\qquad \mathrm{Var}\{\hat m(z)\}=O\big((n|H|)^{-1}\big).
+\]
+See \citep{fan1993local,fan1996local,loader1999local} for details. Product and radial kernels both fit within this framework.
+
+
+\subsection{Robust Local Polynomial Regression with Similarity Kernels}
+\label{s:background_rsklpr}
+Robust Local Polynomial Regression with Similarity Kernels (RSKLPR) \citep{shulman2025robust} augments LPR with a similarity kernel on the full data space to achieve robustness. Writing its empirical loss at $(z,y)$ as
+\begin{equation}
+\label{eq:rsk_loss}
+\Lcal_{rsk}(z,y;\D_n,\Hcal)
+=\sum_{i=1}^{n}\Big(Y_i-r_p(t_i)^\top\beta(z,y)\Big)^2\,
+\K_D\big((z,y),(Z_i,Y_i);\Hcal\big),
+\end{equation}
+
+with the decomposition
+\begin{equation}
+\K_D\big((z,y),(u,v);\Hcal_1,\Hcal_2\big)
+=K_1(z-u;\Hcal_1)\,K_2\big((z,y),(u,v);\Hcal_2\big),
+\end{equation}
+a separable choice $K_2((z,y),(u,v))=\hat f_{Y\mid Z}(y\mid z)\hat f_{Y\mid Z}(v\mid u)$ yields,
+after dropping the multiplicative constant $\hat f_{Y \mid Z}(y \mid z)$ (independent of $i$),
+a simplified empirical loss independent of $y$ at the query:
+\begin{equation}
+\label{eq:rsk_simple_loss}
+\tilde{\Lcal}(z)
+=\sum_{i=1}^{n}\Big(Y_i-r_p(t_i)^\top\beta(z)\Big)^2\,K_1(t_i;\Hcal_1)\,\hat f_{Y \mid Z}(Y_i \mid Z_i;\Hcal_2).
+\end{equation}
+In the population, the weight appears squared because it is multiplied by the conditional density itself as a weight inside the expectation:
+\begin{equation}
+\label{eq:rsk_pop}
+\Jcal_{rsk}(z;\beta)
+=\iint \big(v-g_z(u;\beta)\big)^2\,K_1(z-u;\Hcal_1)\,[f_{Y \mid Z}(v \mid u)]^2\,f_Z(u)\,dv\,du.
+\end{equation}
+The intercept targets $\mu'(z)=\frac{\int v[f_{Y \mid Z}(v \mid z)]^2\,dv}{\int [f_{Y \mid Z}(v \mid z)]^2\,dv}$, which reduces to $m(z)$ when $f_{Y \mid Z}(\cdot \mid z)$ is symmetric about its mean; see \citep{shulman2025robust}. \newline
+
+
+\section{Generalized Context-Aware LPR}
+\label{s:Generalized Context-Aware LPR}
+
+\subsection{Modeling Convention: The Context-Dependent Mean}
+\label{s:gc_convention}
+
+Let $X \in \mathcal{X}$ denote a predictor observation where we emphasize that $\mathcal{X}$ is a general predictor space: an observation $X$ may include Euclidean features, categorical labels, spatial coordinates, or identifiers of nodes in a graph or network. We assume there exists a mapping yielding the decomposition $X \mapsto (Z,C)$, where $Z \in \R^d$ is the Euclidean chart used by the local polynomial and $C$ collects additional \emph{contexts} (categorical, geospatial, network-valued, etc.). We do not treat $C$ merely as variance modifiers but rather adopt the conditional-mean formulation:
+\[
+m_c(z) \;\equiv\; \mathbb{E}\!\left[Y \mid Z = z,\, C = c\right].
+\]
+Accordingly, we write the observation model as
+\[
+Y = m_C(Z) + \varepsilon,
+\qquad
+\mathbb{E}[\varepsilon \mid Z,C] = 0, \quad \mathrm{Var}(\varepsilon \mid Z,C) = \sigma^2(Z,C).
+\]
+We target the context-specific regression function at \( x^\star = (z, c^\star) \):
+\[
+m_{c^\star}(z).
+\]
+
+Here, the regression function $m_{c^\star}(z)$ is assumed to be smooth (locally polynomial) in $Z$, but its dependence on $C$ may be complex, discontinuous, or defined on a graph. The role of the context kernels is to isolate a local "slice" or neighborhood in the $C$-space, within which the polynomial approximation in $Z$ is valid. 
+
+\subsection{Estimator}
+We decouple the polynomial chart from the weighting context by defining feature maps over the general predictor space $\mathcal{X}$. We define the \emph{compound predictor kernel} as a product of individual kernels on mapped features:
+\begin{equation}
+\label{eq:kc_def}
+K_c(x,u;\Hcal_c)
+= K_{0,H}\!\big(\psi_0(x)-\psi_0(u)\big)\,
+\prod_{j=1}^{J} K_j\!\big(\psi_j(x),\psi_j(u);\eta_j\big),
+\qquad
+\Hcal_c=(H,\eta_1,\ldots,\eta_J).
+\end{equation}
+
+Here, $\psi_0: \mathcal{X} \to \R^d$ extracts the Euclidean chart $Z=\psi_0(X)$ for the polynomial fit, equipped with the standard kernel $K_{0,H}(\cdot)=|H|^{-1}K_0(H^{-1}\cdot)$. For $j\ge1$, the maps $\psi_j: \mathcal{X} \to \mathcal{C}_j$ extract auxiliary context features $C_j \in \mathcal{C}_j$. The context kernels $K_j(\cdot;\eta_j)$ are symmetric on their respective spaces $\mathcal{C}_j$ and operate on the feature maps $\psi_j(X)$; they may incorporate non-Euclidean structure (e.g., Haversine distance for coordinates, graph shortest-path or diffusion distances \citep{shuman2013emerging}, or Aitchison--Aitken kernels for discrete labels \citep{aitchison1976multivariate}). This recovers classical product-kernel mixed-data smoothing while generalizing to non-Euclidean topologies.
+
+With these components, the GC-LPR estimator $\hat\beta(x)$ minimizes the context-weighted least squares objective:
+\begin{equation}
+\label{eq:gc_lpr_loss}
+\Lcal_{\text{gc-lpr}}(x)
+=\sum_{i=1}^{n}\Big(Y_i-r_p(\psi_0(X_i)-\psi_0(x))^\top\beta(x)\Big)^2\,K_c(x,X_i;\Hcal_c).
+\end{equation}
+Crucially, the polynomial basis $r_p(\cdot)$ operates only on $Z_i=\psi_0(X_i)$, whereas the weight factorizes as
+\[
+K_c(x,X_i;\Hcal_c)=K_{0,H}(Z_i-z)\,W(x,X_i),
+\qquad
+W(x,u)\coloneqq \prod_{j=1}^{J} K_j\!\big(\psi_j(x),\psi_j(u);\eta_j\big),
+\]
+where $z=\psi_0(x)$ and $W$ involves only the maps $\{\psi_j\}_{j \ge 1}$. Note that while the polynomial basis $r_p$ varies only with $Z$, the estimated coefficients $\beta(x)$ vary with the full context $C$, allowing the shape of the regression function to change across contexts.
+
+Specifically, given finite context bandwidths, the estimator naturally targets the \emph{context-smoothed mean}:
+\[
+m_W(z;x^\star) = \frac{\mathbb{E}[Y \, W(x^\star, X) \mid Z=z]}{\mathbb{E}[W(x^\star, X) \mid Z=z]},
+\]
+where $x^\star=(z,c^\star)$ with $z=\psi_0(x^\star)$. While analytically distinct from the pointwise target $m_{c^\star}(z)$, in domains such as graph signal processing this smoothing is often a desired feature rather than a bias term. It allows the model to ``borrow strength'' from topologically proximate observations, effectively denoising the structural dependency on $C$ while fitting the geometry of $Z$.
+
+Hence, at $x^\star$, GC\text{-}LPR yields a local polynomial approximation to $m_W(z;x^\star)$; this coincides with $m_{c^\star}(z)$ under exact context selection or vanishing context bandwidth.
+
+\paragraph{Example (geospatial and categorical contexts)}
+Consider a raw observation $X$ consisting of tabular features $Z_{\text{feat}}$, geospatial coordinates $Z_{\text{geo}}$, a region label $C_{\text{cat}}$, and a network node $C_{\text{net}}$. We define the feature maps as:
+\[
+\psi_0(X)=Z_{\text{feat}} \oplus Z_{\text{geo}},\quad
+\psi_1(X)=Z_{\text{geo}},\quad
+\psi_2(X)=C_{\text{cat}},\quad
+\psi_3(X)=C_{\text{net}},
+\]
+where $\oplus$ denotes concatenation. We then define the compound kernel $K_c$ explicitly in terms of these inputs:
+\[
+K_c(x,u;\Hcal_c) =
+K_{0,H}\big(\psi_0(x)-\psi_0(u)\big) \cdot
+K_{\text{geo}}\big(\psi_1(x),\psi_1(u);\eta_1\big)\cdot
+K_{\text{cat}}\big(\psi_2(x),\psi_2(u);\eta_2\big)\cdot
+K_{\text{net}}\big(\psi_3(x),\psi_3(u);\eta_3\big).
+\]
+This formulation allows the model to handle ``manifold folding'' (e.g., cul-de-sacs) where points are close in the Euclidean chart $\psi_0$ but distant in the network context $\psi_3$. Specifically, $K_{\text{net}}$ will assign low weight to physically close but network-distant points, correctly estimating the mean for the specific network context. Note that $Z_{\text{geo}}$ appears in both the polynomial chart $\psi_0$ and the context map $\psi_1$; GC-LPR allows variables to be shared between the regressor $r_p$ and the weighting kernel $K_c$. When overlaps are heavy, one may temper factors via exponents $K_j^{\alpha_j}$ with $\alpha_j\in(0,1]$, or tune the $(H,\eta_j)$ by cross-validation.
+
+\subsection{A Robust Extension (GRC-LPR)}
+
+Optional robustness against $Y$-outliers is incorporated by a separable response-based factor $K_r$, following \citet{shulman2025robust}. To control the curse of dimensionality in the density estimation, we define a robustness feature map $\psi_r: \mathcal{X} \to \R^{d_r}$ (typically $\psi_r(X)=\psi_0(X)=Z$) to select the variables relevant for detecting outliers. Define
+\begin{equation}
+\label{eq:grc_decomp}
+\K_{\D}^*\big((x,y),(u,v);\Hcal\big)\;:=\;K_c(x,u;\Hcal_c)\;K_r\big((\psi_r(x),y),(\psi_r(u),v);\Hcal_r\big),
+\end{equation}
+and consider the empirical loss at $x$ obtained when $K_r$ is chosen as a separable conditional-density weight in the $\psi_r$-chart, i.e.,
+$K_r\big((\psi_r(x),y),(\psi_r(u),v)\big)=\hat f_{Y\mid \psi_r(X)}(y\mid \psi_r(x);\Hcal_r)\,\hat f_{Y\mid \psi_r(X)}(v\mid \psi_r(u);\Hcal_r)$.
+Dropping the multiplicative constant $\hat f_{Y\mid \psi_r(X)}(y\mid \psi_r(x);\Hcal_r)$ (independent of $i$) yields:
+\begin{equation}
+\label{eq:grc_simple_loss}
+\tilde{\Lcal}_{\text{grc-lpr}}(x)
+=\sum_{i=1}^{n}\Big(Y_i-r_p(\psi_0(X_i)-\psi_0(x))^\top\beta(x)\Big)^2\,K_c(x,X_i;\Hcal_c)\,\hat f_{Y\mid \psi_r(X)}(Y_i \mid \psi_r(X_i);\Hcal_r).
+\end{equation}
+This formulation yields a single-step reweighted LPR where points with low conditional density, relative to the chosen subspace $\psi_r(X)$, receive smaller weights. While one may choose $\psi_r(X)=X$, restricting $\psi_r$ to the polynomial chart $Z$ or a low-dimensional subset may be preferred to ensure stable density estimates.
+
+\section{Related Work}
+\label{s:Related Work}
+
+The proposed GC-LPR framework sits at the intersection of nonparametric smoothing, mixed-data regression, and signal processing on irregular domains. This section contextualizes our contribution within these established fields.
+
+\subsection{Generalized Product Kernels and Mixed Data}
+The foundational challenge in nonparametric regression is the ``curse of dimensionality.'' \citet{li2004nonparametric} revolutionized the treatment of mixed data by introducing generalized product kernels. Their estimator, $\hat{E}(Y|X^c, X^d)$, utilizes standard kernels for continuous variables ($X^c$) and variation-based kernels (e.g., Aitchison-Aitken) for discrete variables ($X^d$). A critical property of this framework is ``automatic relevance determination'': cross-validation can effectively shrink the bandwidths of irrelevant predictors to infinity, smoothing them out of the model \citep{hall2007nonparametric}.
+
+However, the Li-Racine framework assumes that all variables entering the kernel also enter the regression function. GC-LPR relaxes this by decoupling the sets. We allow context variables $C$ to enter the kernel $K_c$ without forcing them into the polynomial basis $r_p(Z)$. This approach aligns with the theory of multivariate associated kernels \citep{some2016effects}, which demonstrates that constructing product kernels adapted to the specific support of each regressor (e.g., bounded or discrete) effectively minimizes boundary bias, often without requiring complex correlation structures. This is conceptually closer to using auxiliary information for variance reduction or ``precision weighting'' \citep{cheng1994nonparametric}, rather than direct covariate adjustment.
+
+\subsection{Varying Coefficient Models and GWR}
+Varying Coefficient Models (VCM) extend the linear model by allowing coefficients to change smoothly as a function of an index variable, typically written as $Y = X^\top \beta(U) + \epsilon$ \citep{hastie1993varying, fan1999statistical}. \citet{he2009double} further refined VCM estimation using double-smoothing bias reduction techniques.
+
+Geographically Weighted Regression (GWR) \citep{brunsdon1996geographically, fotheringham2003geographically} is perhaps the most famous instance of a spatial VCM. In GWR, the regression coefficients are local to a spatial coordinate $u$. Recent extensions, such as Multiscale GWR (MGWR), allow different bandwidths for different covariates \citep{fotheringham2017multiscale}. 
+
+GC-LPR can be viewed as a generalization of GWR where "location" is defined not just by spatial coordinates, but by an abstract context $C$. While GWR relies on Euclidean spatial distance, GC-LPR admits abstract distances defined on graphs, networks, or latent manifolds. Our framework effectively treats the context $C$ as the index variable $U$ in a VCM, estimating $\beta(Z, C)$ where the dependence on $C$ is handled non-parametrically via the context kernel.
+
+\subsection{Graph Signal Processing and Manifold Regularization}
+When data resides on irregular domains, standard Euclidean kernels fail. The field of Graph Signal Processing (GSP) addresses this by defining smoothness via the graph Laplacian \citep{shuman2013emerging}. Diffusion kernels (or heat kernels) $K_t = e^{-t\mathcal{L}}$ generalize Gaussian smoothing to manifolds and graphs, capturing the intrinsic geometry of the data domain \citep{belkin2003laplacian, coifman2006diffusion}.
+
+Work by \citet{bickel2007local} extended local polynomial regression to unknown manifolds, proving that LPR can adapt to the intrinsic dimension of the data. GC-LPR bridges the gap between these spectral methods and classical smoothing. By incorporating graph-based kernels (e.g., diffusion or shortest-path) as multiplicative factors in $K_c$, we explicitly enforce that the local polynomial fit respects the topology of the underlying domain. This allows us to estimate the context-dependent mean $m(Z, C)$ even when $C$ represents a complex manifold structure that is not isometric to Euclidean space.
+
+In summary, GC-LPR can be viewed as a mixed-data, context-indexed varying coefficient model implemented via a product of Euclidean and non-Euclidean kernels, while preserving the local polynomial machinery.
+
+
+\section{Theoretical Properties}
+\label{sec:theory}
+
+We study the estimator in \eqref{eq:gc_lpr_loss} at a fixed interior query point \(x^\star\in\mathcal{X}\).
+Write \(z=\psi_0(x^\star)\in\mathbb{R}^d\) and \(x^\star=(z,c^\star)\). When discussing population quantities,
+we use the regular conditional distribution of \((X,Y)\) given \(Z=\psi_0(X)\), and write
+\(\mathbb{E}[\cdot\mid Z=u]\) for conditional expectations.
+
+For clarity, recall the context weight and its conditional mean
+\[
+W(x,u)\coloneqq \prod_{j=1}^J K_j\!\big(\psi_j(x),\,\psi_j(u);\eta_j\big),
+\qquad
+\gamma_x(u)\coloneqq \mathbb{E}\!\left[\,W(x,X)\mid Z=u\,\right],
+\]
+so that the compound kernel factorizes into Euclidean and context components:
+\[
+K_c(x,u)\;=\;K_{0,H}\!\big(\psi_0(x)-\psi_0(u)\big)\,W(x,u).
+\]
+Whenever \(\gamma_x(u)>0\), define the associated context-smoothed conditional mean
+\[
+m_W(u;x)\coloneqq
+\frac{\mathbb{E}[Y\,W(x,X)\mid Z=u]}{\mathbb{E}[W(x,X)\mid Z=u]}
+=\frac{\mathbb{E}[Y\,W(x,X)\mid Z=u]}{\gamma_x(u)}.
+\]
+
+Under the modeling convention \(m_c(z)=\mathbb{E}[Y\mid Z=z,\,C=c]\), our estimand at
+\(x^\star\) is the context-specific mean \(m_{c^\star}(z)\). However, with finite context bandwidths,
+the estimator is naturally centered around the context-smoothed mean \(m_W(z;x^\star)\); the difference
+\(m_W(z;x^\star)-m_{c^\star}(z)\) captures the effect of smoothing (or borrowing strength) across contexts.
+
+
+\subsection{Assumptions}
+\label{s:assumptions}
+
+\begin{assumption}[Data, design, and local smoothness]
+\label{ass:data}
+Let \(Z=\psi_0(X)\in\mathbb{R}^d\) admit a density \(f_Z\) that is continuous in a neighborhood of \(z\),
+with \(f_Z(z)>0\). Assume the regression model
+\[
+Y=m(Z,C)+\varepsilon,\qquad \mathbb{E}[\varepsilon\mid Z,C]=0,\qquad \Var(\varepsilon\mid Z,C)=\sigma^2(Z,C).
+\]
+Fix \(x^\star\), and assume the context-smoothed mean \(m_W(\cdot;x^\star)\in C^{p+1}\) in a neighborhood of \(z\).
+In particular, if the context kernels induce no leakage away from \(c^\star\) so that \(m_W(\cdot;x^\star)=m_{c^\star}(\cdot)\)
+locally, this reduces to \(m_{c^\star}(\cdot)\in C^{p+1}\) near \(z\).
+\end{assumption}
+
+\begin{assumption}[Euclidean kernel and bandwidth]
+\label{ass:k0}
+\(K_0:\mathbb{R}^d\to[0,\infty)\) is even, integrable with finite moments up to order \(p+2\), and
+\(\int K_0(t)\,dt=1\). The bandwidth \(H\) is positive definite with \(\|H\|\to0\) and \(n|H|\to\infty\).
+Moreover, the kernel moment matrix
+\[
+M_0\coloneqq \int r_p(t)\,r_p(t)^\top K_0(t)\,dt
+\]
+is nonsingular.
+\end{assumption}
+
+\begin{assumption}[Context factors]
+\label{ass:context}
+For \(j\ge 1\), the context factor \(K_j(\cdot,\cdot;\eta_j)\) is symmetric and nonnegative, and is
+uniformly bounded above: \(0\le K_j(\cdot,\cdot;\eta_j)\le \bar K_j<\infty\). (Equivalently, one may replace each
+factor by \(K_j/\bar K_j\in[0,1]\), which only rescales the weighted least-squares objective by a constant and does
+not change its minimizer.)
+
+Fix \(x^\star=(z,c^\star)\). Assume the conditional mean weight \(g_{x^\star}(u)=\mathbb{E}[W(x^\star,X)\mid Z=u]\)
+satisfies one of the following local regularity conditions in a neighborhood of \(z\):
+\begin{enumerate}[label=(\alph*)]
+    \item \textbf{Continuous contexts:} \(g_{x^\star}(u)\) is locally Lipschitz at \(z\); i.e., there exist
+    constants \(L<\infty\) and \(\delta>0\) such that
+    \[
+    |g_{x^\star}(u)-g_{x^\star}(z)| \le L\|u-z\| \quad \text{whenever } \|u-z\|<\delta.
+    \]
+    \item \textbf{Discrete/partitioned contexts:} \(g_{x^\star}(u)\) is locally constant in \(u\) near \(z\).
+\end{enumerate}
+\end{assumption}
+
+\begin{assumption}[Positivity and second moments]
+\label{ass:positivity}
+Let \(\phi_1(x^\star)\coloneqq \mathbb{E}[W(x^\star,X)\mid Z=z]=g_{x^\star}(z)\) and
+\(\phi_2(x^\star)\coloneqq \mathbb{E}[W(x^\star,X)^2\mid Z=z]\). Assume
+\(0<\underline{\phi}\le \phi_1(x^\star)\) and \(\phi_2(x^\star)<\infty\). In addition, assume
+\[
+\mathbb{E}\!\left[\,W(x^\star,X)^2\,\sigma^2(Z,C)\mid Z=z\,\right]<\infty.
+\]
+\end{assumption}
+
+
+\subsection{Bias and Variance}
+
+\begin{lemma}[Weighted-target (effective problem) representation]
+\label{lem:weighted_target}
+Fix a query point \(x\in\mathcal{X}\) and write \(z=\psi_0(x)\). For any measurable function
+\(a:\mathbb{R}^d\to\mathbb{R}\),
+\[
+\mathbb{E}\!\left[(Y-a(Z))^2\,W(x,X)\mid Z=u\right]
+=
+\mathbb{E}\!\left[(Y-m_W(u;x))^2\,W(x,X)\mid Z=u\right]
++ g_x(u)\,\big(a(u)-m_W(u;x)\big)^2.
+\]
+Consequently, the population objective
+\[
+\Jcal_{\mathrm{gc-lpr}}(x;\beta)
+:= \mathbb{E}\Big[(Y - r_p(Z-\psi_0(x))^\top\beta(x))^2\,K_{0,H}(Z-\psi_0(x))\,W(x,X)\Big]
+\]
+is, up to an additive constant independent of \(\beta\), equal to
+\[
+\tilde{\Jcal}_{\mathrm{gc-lpr}}(x;\beta)
+=
+\int \Big(m_W(u;x)-r_p(u-z)^\top\beta(x)\Big)^2\,K_{0,H}(u-z)\,g_x(u)\,f_Z(u)\,du.
+\]
+In particular, GC-LPR is (population-wise) standard local polynomial regression for the target \(m_W(\cdot;x)\)
+under the effective design density \(u\mapsto f_Z(u)\,g_x(u)\).
+\end{lemma}
+
+\begin{proposition}[Bias and consistency]
+\label{prop:bias}
+Under Assumptions \ref{ass:data}--\ref{ass:positivity}, the GC-LPR intercept estimator
+\(\hat m(x)\coloneqq e_1^\top \hat\beta(x)\), where \(e_1=(1,0,\dots,0)\) selects the intercept term,
+is centered around the context-smoothed mean \(m_W(z;x^\star)\). Moreover, its bias relative to the
+context-specific mean \(m_{c^\star}(z)\) decomposes as
+\[
+\mathbb{E}\big[\hat m(x^\star)\big]-m_{c^\star}(z)
+=
+\underbrace{\Big(\mathbb{E}\big[\hat m(x^\star)\big]-m_W(z;x^\star)\Big)}_{\text{polynomial bias (in \(Z\))}}
+\;+\;
+\underbrace{\Big(m_W(z;x^\star)-m_{c^\star}(z)\Big)}_{\text{Smoothing Bias (from \(C\))}}.
+\]
+The first term is the standard local-polynomial approximation error in \(Z\), and satisfies
+\[
+\mathbb{E}\big[\hat m(x^\star)\big]-m_W(z;x^\star)
+=O\!\big(\|H\|^{p+1}\big).
+\]
+Hence,
+\[
+\mathbb{E}\big[\hat m(x^\star)\big]-m_{c^\star}(z)
+=
+O\!\big(\|H\|^{p+1}\big)\;+\;\Big(m_W(z;x^\star)-m_{c^\star}(z)\Big).
+\]
+In particular, if the context kernels enforce exact selection of the context cell containing \(c^\star\)
+(e.g., \(W(x^\star,X)=0\) outside that cell, so that \(m_W(z;x^\star)=m_{c^\star}(z)\)), then the smoothing bias
+term vanishes and the \(O(\|H\|^{p+1})\) rate is preserved. In the continuous-context case, sharpening the
+context kernels (smaller \(\eta\)) can reduce \(\big|m_W(z;x^\star)-m_{c^\star}(z)\big|\), typically at the
+cost of increased variance through a smaller effective sample size.
+\end{proposition}
+
+
+\begin{proposition}[Asymptotic variance]
+\label{prop:variance}
+Under Assumptions \ref{ass:data}--\ref{ass:positivity}, for interior \(x\),
+\[
+\mathrm{Var}\{\hat m(x)\}\ \approx\ \frac{1}{n|H|}\,\frac{1}{f_Z(z)}\;
+e_1^\top M_0^{-1}\,\Omega_0\,M_0^{-1} e_1\ \times\ \Phi(x),
+\]
+where \(M_0\) and \(\Omega_0\) are the standard moment matrices for \(K_0\), and
+\[
+\Phi(x)=\frac{\mathbb{E}\big[\,W(x,X)^2\,\sigma^2(Z,C)\mid Z=z\,\big]}
+{\mathbb{E}\big[\,W(x,X)\mid Z=z\,\big]^2}
+\]
+is the context design effect (see Appendix for definitions).
+\end{proposition}
+
+The context design effect factor \(\Phi(x)\) quantifies the statistical cost of context isolation:
+\begin{itemize}
+    \item \textbf{Recovery of standard LPR:} If \(W\equiv 1\) (no context weights) and errors are
+    homoskedastic, then \(\Phi(x)=\sigma^2\), recovering the standard LPR variance expression.
+    \item \textbf{Variance inflation:} When context weights are sparse or highly variable (e.g., focusing
+    on a small manifold slice), \(\mathbb{E}[W^2]>(\mathbb{E}[W])^2\) by Jensen's inequality. Consequently,
+    \(\Phi(x)\) increases, reflecting the reduction in effective sample size caused by the context filter. This highlights that GC-LPR does not eliminate the curse of dimensionality, but rather converts model bias into variance. While the method allows for complex dependencies, a low-variance estimate still requires a sufficiently dense sample in the joint $(Z,C)$ space.
+\end{itemize}
+
+\section{Applications and Experiments}
+\label{s:Experiments}
+\subsection{Experiment 1: Geospatial Context on California Housing}
+
+As a foundational validation of the proposed framework, we test the hypothesis that explicit context kernels improve performance even when contextual variables (coordinates) are already present in the primary feature set. We evaluate GC-LPR against standard LPR, its robust variant RSKLPR \citep{shulman2025robust}, and common baselines including K-Nearest Neighbors (KNN), Global Polynomial Ridge, and Global Linear regression.
+
+\paragraph{\textbf{Dataset and Setup}}
+We utilize the California Housing dataset \citep{pace1997sparse}, modeling the median house value (\texttt{MedHouseVal}) using a feature vector $Z$ containing \texttt{MedInc}, \texttt{AveRooms}, \texttt{Latitude}, and \texttt{Longitude}. Non-geospatial features were standardized. To ensure statistical rigor, we performed 10-fold cross-validation (CV), reporting the mean and standard deviation for all metrics.
+
+All models were tuned via nested cross-validation within each fold. The hyperparameter search space for local polynomial models included neighborhood size ($k \in [7, 151]$), polynomial degree ($p \in \{0, 1\}$), and kernel types Laplacian and Tricube. For GC-LPR and GRC-LPR, the search also optimized the length-scale of the Haversine context kernel. The primary comparison is between:
+\begin{itemize}
+    \item \textbf{LPR / RSKLPR (Standard):} Utilizes a single features kernel over the full feature vector $Z$. 
+    \item \textbf{GC-LPR / GRC-LPR (Geospatial):} Employs the compound kernel $K_c = K_{\text{std}}(Z) \cdot K_{\text{geo}}(\text{Lat, Lon})$, where $K_{\text{geo}}$ is a Haversine-based RBF kernel.
+\end{itemize}
+
+\paragraph{\textbf{Results and Statistical Analysis}}
+The results of the 10-fold CV are summarized in Table \ref{tab:results_california_10fold}. GRC-LPR (the robust, context-aware variant) achieved the best performance across all metrics, with a mean RMSE of $0.5245$ and $R^2$ of $0.7932$. The predictions scatter plot is shown in Figure \ref{figure:california_housling_exp_1_scatter_grid}.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=1.0\textwidth]{california_housling_exp_1_scatter_grid.png}
+\caption{Comparison of different model predictions for one of the CV test sets for Experiment 1. The y-axis is the predicted value and x-axis is the actual value. The dashed line represents the ideal predictions. GC-LPR shows tighter clustering around the ideal line compared to baselines.}
+\label{figure:california_housling_exp_1_scatter_grid}
+\end{figure}
+
+
+\begin{table}[h]
+\centering
+\caption{10-fold cross-validation results on the California Housing dataset (Mean $\pm$ SD). The context-aware GRC-LPR variant achieves the highest predictive accuracy.}
+\label{tab:results_california_10fold}
+\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{Model} & \textbf{RMSE} & \textbf{MAE} & \textbf{$R^2$} \\ \midrule
+\textbf{GRC-LPR (Geospatial)} & \textbf{0.5245 $\pm$ 0.021} & \textbf{0.3489 $\pm$ 0.014} & \textbf{0.7932 $\pm$ 0.012} \\
+GC-LPR (Geospatial) & 0.5299 $\pm$ 0.022 & 0.3580 $\pm$ 0.017 & 0.7889 $\pm$ 0.013 \\
+KNN & 0.5454 $\pm$ 0.020 & 0.3584 $\pm$ 0.010 & 0.7761 $\pm$ 0.015 \\	
+RSKLPR (Standard) & 0.5550 $\pm$ 0.017 & 0.3727 $\pm$ 0.009 & 0.7684 $\pm$ 0.011 \\
+
+LPR (Standard) & 0.5676 $\pm$ 0.044 & 0.3771 $\pm$ 0.034 & 0.7565 $\pm$ 0.038 \\
+Poly-Ridge & 0.7314 $\pm$ 0.025 & 0.5337 $\pm$ 0.014 & 0.5978 $\pm$ 0.020 \\
+Linear & 0.7436 $\pm$ 0.021 & 0.5480 $\pm$ 0.011 & 0.5844 $\pm$ 0.016 \\ \bottomrule
+\end{tabular}
+\end{table}
+
+The explicit decoupling of geospatial context leads to a marked improvement over standard LPR (RMSE $0.5299$ vs $0.5676$). Notably, incorporating the response-based robustness factor ($K_r$) in GRC-LPR further reduced error, suggesting that the housing data contains localized outliers or heavy-tailed distributions that the context-aware kernel helps isolate.
+
+\paragraph{\textbf{Spatial Error Distribution}}
+To investigate the qualitative impact of context-awareness, we mapped the absolute prediction errors across California (Figure \ref{figure:california_geospatial_errors}). While global models  exhibit systematic biases in the Central Valley and high-density coastal regions, GRC-LPR shows a significantly more uniform error distribution. The context-aware model effectively adapts its local polynomial surface to the unique price-dynamics of the San Francisco Bay Area and Greater Los Angeles, whereas models lacking the context kernel tend to over-smooth across these distinct economic boundaries.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[trim={0 0 0 3cm},clip, width=1.0\textwidth]{california_housling_exp_1_geospatial_errors.png}
+\caption{Geospatial distribution of absolute errors across California on one of the CV test sets. The GC-LPR (Geospatial) model (bottom right) exhibits lower and more spatially uniform errors compared to global models, particularly in high-variance coastal urban centers.}
+\label{figure:california_geospatial_errors}
+\end{figure}
+
+\paragraph{\textbf{Effective Neighborhood Analysis}}
+Hyperparameter optimization revealed a consistent discrepancy in optimal neighborhood sizes ($k$). Cross-validation selected neighborhoods for GC-LPR that were approximately three-fold larger than those for standard LPR. This empirical result aligns with our theoretical framework: by employing a context kernel to ``soft-filter'' geographically distant observations, the estimator effectively expands the pool of relevant local data. This increased effective sample size stabilizes the polynomial fit and reduces variance, while the context-aware weighting prevents the smoothing bias typically associated with large Euclidean neighborhoods in non-stationary spatial domains.
+
+\subsection{Experiment 2: Fusing Tabular, Geospatial, and Network Context in NYC}
+The purpose of the second experiment is to demonstrate the use of a more advanced geospatial kernel that takes similar inputs as in Experiment 1 (i.e., \texttt{Latitude} and \texttt{Longitude}), but employs a non-Euclidean kernel on a graph. The goal is to show that standard distance metrics (Euclidean or Haversine) are often insufficient, and that a context-aware model can capture a more meaningful, network-based definition of proximity.
+
+\paragraph{\textbf{Dataset and Setup}}
+We use an NYC Airbnb dataset \citep{zillow_data_2019} to predict listing \texttt{price}. The features include standard tabular attributes (\texttt{host\_listings\_count}, \texttt{room\_type}, etc.) as well as \texttt{Latitude} and \texttt{Longitude}. We compare our GRC-LPR model against a standard LPR and other common baselines: Global Linear, Global Polynomial, and K-Nearest Neighbors. All models were tuned by 5-fold cross-validation. 
+The primary comparison is between:
+
+\begin{itemize}
+    \item \textbf{RSKLPR (Standard):} The baseline robust LPR, which uses a single, monolithic kernel over all standard features, including \texttt{Latitude} and \texttt{Longitude}.
+    \item \textbf{GRC-LPR (Subway):} Our proposed model. This defines the predictor kernel as a product of three distinct kernels:
+    $$
+    K_c = K_{\text{features}} \times K_{\text{subway}} \times K_r
+    $$
+    \begin{itemize}
+        \item $K_{\text{features}}$: A kernel on the standard tabular features.
+        \item $K_{\text{subway}}$: A dedicated context kernel. This kernel maps coordinates to the nearest subway station and computes similarity based on the shortest path distance (number of stops) between stations on the subway network graph. This captures topological proximity rather than simple aerial distance. Figure~\ref{figure:subway_kernel_similarity} illustrates the spatial decay of similarity weights on the subway graph, demonstrating how the kernel captures non-Euclidean connectivity relative to a central station.
+        \item $K_r$: The response-based robustness factor from RSKLPR (specifically the conditional density estimator).
+    \end{itemize}
+\end{itemize}
+
+\paragraph{\textbf{Results}}
+The results in Table \ref{tab:results_nyc} show a clear performance hierarchy. The GRC-LPR (Subway) model, which fuses tabular features with the non-Euclidean subway graph kernel, significantly outperforms all other models. It achieves the highest R² and the lowest RMSE, validating that incorporating the network topology yields a more accurate model than relying on Euclidean coordinates alone.
+
+\paragraph{\textbf{Analysis of Hyperparameters}}
+The cross-validation results reveal distinct behaviors compared to the California Housing experiment. First, both LPR and GRC-LPR selected a polynomial degree of $p=0$ (Nadaraya-Watson), indicating that the local price surface is highly irregular, favoring local averaging over linear extrapolation. 
+
+Second, regarding neighborhood size, standard LPR selected 18 neighbors, while GRC-LPR selected a tighter window of 12 neighbors. Contrast this with Experiment 1, where the context kernel allowed the neighborhood to expand (from 35 to 170). Here, the subway graph context acts as a strict constraint: topological proximity is so critical to price that the optimal strategy is to restrict smoothing to a very small, highly connected set of stations, rather than borrowing strength from a wider geographic area. 
+
+\begin{table}[h]
+\centering
+\caption{Model performance on the NYC Airbnb test set.}
+\label{tab:results_nyc}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textbf{Model} & \textbf{RMSE (Price)} & \textbf{R²} \\ \midrule
+\textbf{GRC-LPR (Subway)} & \textbf{\$1195.20} & \textbf{0.9354} \\
+K-Nearest Neighbors & \$1608.30 & 0.8830 \\
+RSKLPR (Standard) & \$1733.50 & 0.8641 \\
+Global Polynomial & \$2538.07 & 0.7086 \\
+Global Linear & \$3171.05 & 0.5452 \\ \bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[ht]
+    \centering
+    % First Subfigure (Left - Full Network)
+    % [b] aligns the bottom of the subfigures
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{subway_kernel_similarity.png}
+        \caption{Full subway network view.}
+        \label{fig:subway_full}
+    \end{subfigure}
+    \hfill % Adds horizontal stretch between the two subfigures
+    % Second Subfigure (Right - Zoomed In)
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{subway_kernel_similarity_zoomed_5.png}
+        \caption{Zoomed-in vicinity of the reference station.}
+        \label{fig:subway_zoomed}
+    \end{subfigure}
+    % Main Overall Caption
+    \caption{Visualizing graph-based kernel similarity for Experiment 2. The heatmaps demonstrate the similarity weights generated by $K_{\text{subway}}$ relative to the reference station ``Times Sq-42 St'' (ID 127), indicated by the large red node with a black outline. Warmer colors represent higher similarity, which decays exponentially based on the shortest path distance on the subway graph network. Panel (a) shows the distribution over the entire network, while (b) highlights the local neighborhood topology.}
+    \label{figure:subway_kernel_similarity}
+\end{figure}
+
+
+
+\subsection{Experiment 3: Regression on a Node Function Defined over a Graph}
+\label{s:exp_airport}
+
+This experiment serves as the primary validation of our theoretical framework. While the previous experiments relied on real-world data where the true data generating process is unknown, here we explicitly simulate a target function $Y = m(Z, C)$ defined on the nodes of a graph. This allows us to test the specific hypothesis that \emph{structural locality} (who you are connected to) is distinct from \emph{feature similarity} (how connected you are), and that omitting the former leads to bias.
+
+\paragraph{\textbf{Dataset and Setup}}
+We construct a graph $G = (\mathcal{V}, \mathcal{E})$ representing the US domestic flight network, where nodes are airports and edges represent direct routes.
+\begin{itemize}
+    \item \textbf{Node Features ($Z$):} For each airport, we compute a feature vector containing standard graph centrality metrics (\texttt{PageRank}, \texttt{Betweenness}, \texttt{Degree}) and geospatial coordinates (\texttt{Latitude}, \texttt{Longitude}). Crucially, these features describe the \emph{role} of a node, but not its unique position in the topology.
+    \item \textbf{Generative Process ($Y$):} We generate a synthetic "flight delay" signal that depends on both local features and network propagation. We model this via a diffusion process:
+    \begin{align*}
+        \tilde{Y}^{(0)}_i &= \gamma^\top Z_i + \xi_i, \\
+        \tilde{Y}^{(k+1)} &= \alpha \tilde{Y}^{(k)} + (1-\alpha) A \tilde{Y}^{(k)} \quad \text{for } k=0,\dots,6,
+    \end{align*}
+    where $A$ is the normalized adjacency matrix with the traffic volume as the raw edge weights, $\xi_i$ is noise, and the final target is $Y := \tilde{Y}^{(7)}$.
+\end{itemize}
+
+This process creates a scenario where two airports with similar feature vectors $Z$ (e.g., two medium-sized hubs) may have vastly different $Y$ values if they lie in different diffusion clusters. Standard LPR with a kernel only in $Z$ cannot distinguish them; GC-LPR with graph context can. Figure~\ref{fig:airport_setup} illustrates the underlying network topology and the synthetic delay function used as the prediction target.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.9\textwidth]{us_airport_delay_network.png}
+    \caption{Visualizing the experimental setup for Experiment 3. The map displays the US airport network where edges represent flight routes and node sizes are proportional to degree. The color gradient shows the synthetic ``delay'' target function ($Y$) propagated across the network, which serves as the ground truth for the regression task.}
+    \label{fig:airport_setup}
+\end{figure}
+
+\paragraph{\textbf{Models}}
+We compare feature-only models against our context-aware approach. All models were tuned via 10-fold cross-validation to ensure rigorous comparison.
+\begin{itemize}
+    \item \textbf{Baselines:} 
+    \begin{itemize}
+        \item \textbf{Global Linear:} Constrained to non-negative coefficients (\texttt{positive=True}).
+        \item \textbf{Random Forest:} Tuned to \texttt{max\_depth=20} with 100 estimators.
+        \item \textbf{LPR (Standard):} Uses a tricube kernel over $Z$ with the Mahalanobis metric. The cross-validation selected a large neighborhood size of \textbf{123 neighbors} with polynomial degree $p=1$.
+    \end{itemize}
+    \item \textbf{GC-LPR (Graph):} Our proposed model utilizes the compound kernel:
+    \[
+    K_c(x, X_i) = K_{\text{feat}}(Z_i - Z_x) \times K_{\text{graph}}(C_i, C_x) \times K_r
+    \]
+    Here, $K_{\text{graph}}$ measures the shortest-path distance on the network. An extensive grid search (over 14,000 fits) selected a polynomial degree $p=1$, a robust conditional density weighting ($K_r=\text{'conden'}$), and a graph distance scale of $\approx \mathbf{0.31}$. This tight scale indicates that the optimal weighting decays rapidly as topological distance increases, enforcing strict structural locality. As shown in Figure~\ref{fig:airport_kernels}, the graph kernel assigns high weights to topologically connected nodes, effectively defining a non-Euclidean local neighborhood.
+\end{itemize}
+
+\begin{figure}[ht]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{us_airport_delay_sim_atl.png}
+        \caption{Similarity from Atlanta (ATL).}
+        \label{fig:airport_kernel_atl}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{us_airport_delay_sim_hou.png}
+        \caption{Similarity from Houston (HOU).}
+        \label{fig:airport_kernel_hou}
+    \end{subfigure}
+    \caption{Visualization of the Graph Kernel ($K_{\text{graph}}$) weights. The heatmaps demonstrate how the similarity decays based on the shortest-path distance over the network edges rather than Euclidean distance. The red nodes indicate the query reference points (ATL and HOU).}
+    \label{fig:airport_kernels}
+\end{figure}
+
+\paragraph{\textbf{Results}}
+The results in Table \ref{tab:results_airport} demonstrate a critical limitation of feature-based smoothing. 
+
+\begin{table}[h]
+\centering
+\caption{Model performance on the US Airport Network test set. The GRC-LPR (Graph) model, which explicitly models the graph topology, achieves the best results in estimating the node function.}
+\label{tab:results_airport}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{Model} & \textbf{R²} & \textbf{MAE} & \textbf{RMSE} \\ \midrule
+\textbf{GRC-LPR (Graph)} & \textbf{0.9256} & \textbf{0.1293} & \textbf{0.1661} \\
+LPR & 0.9048 & 0.1453 & 0.1879 \\
+Random Forest & 0.9031 & 0.1403 & 0.1896 \\
+Global Linear & 0.7664 & 0.2260 & 0.2944 \\ \bottomrule
+\end{tabular}
+\end{table}
+
+Standard LPR hits a performance ceiling (R² = 0.9048) despite using a large neighborhood (123 neighbors), as it smooths over airports that look similar in $Z$ but are topologically distant. GC-LPR (R² = \textbf{0.9256}) breaks this ceiling. By multiplying the feature kernel with the graph kernel, it localizes the regression to the specific branch of the network where the propagation occurred, confirming that explicit context kernels are necessary to recover $m(Z, C)$. 
+
+
+\section{Conclusion}
+\label{s:Conclusion}
+
+This work presented Generalized Context-Aware Local Polynomial Regression (GC-LPR), a framework that resolves a fundamental rigidity in classical nonparametric smoothing: the requirement that the variables used to define the local neighborhood must be identical to those used in the polynomial fit. By decomposing the predictor space into a Euclidean fitting chart ($Z$) and a context space ($C$), and bridging them via a compound product kernel, we have established a method that is both mathematically rigorous and practically flexible.
+
+Our theoretical analysis re-frames the role of "context" not merely as a variance modifier, but as a fundamental component of the generative process $Y = m(Z, C)$. Under this view, GC-LPR acts as a projected smoother: the context kernels (whether discrete, geospatial, or graph-based) isolate a specific slice of the data manifold, effectively "masking" irrelevant observations before the local polynomial estimation takes place in $Z$. This interpretation justifies the use of kernels that are discontinuous with respect to Euclidean distance, such as those defined on road networks or administrative partitions.
+
+Empirically, we demonstrated that this decoupling yields significant performance gains. In the California Housing experiment, we showed that explicit geospatial kernels improve accuracy even when coordinates are already included as features. In the US Airport Network experiment, we demonstrated that topological contexts (flight paths) capture dependencies that standard Euclidean metrics strictly miss.
+
+Ultimately, GC-LPR bridges the gap between interpretable classical statistics and modern geometric learning. It offers a powerful tool for domains where data is tabular but lives on an irregular domain, providing the adaptivity of graph signal processing with the well-understood bias-variance properties of local polynomials.
+
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\newpage
+
+\appendix
+
+\section{Proofs of Propositions 1 and 2}
+\label{app:proofs}
+
+In this section, we derive the asymptotic bias (Proposition \ref{prop:bias}) and variance (Proposition \ref{prop:variance}) of the GC-LPR estimator. The proof follows the standard derivation for local polynomial regression \citep{fan1996local} but explicitly tracks the influence of the compound context weight $W(x, u)$ to justify the assumptions regarding local smoothness.
+
+\subsection{Notation and Setup}
+For simplicity of notation, throughout this appendix we define the Euclidean features used for the polynomial fit as $Z_i := \psi_0(X_i)$ and the query point as $z := \psi_0(x)$. The polynomial basis and the kernel $K_0$ operate on $Z$, while the context weights $W$ depend on the full predictors $X$.
+
+Let $t_i := H^{-1}(Z_i - z)$ denote the rescaled local coordinate. The estimator at a query point $x$ is:
+\[
+\hat{\beta}(x) = \argmin_{\beta} \sum_{i=1}^n \left( Y_i - r_p(t_i)^\top \beta \right)^2 K_0(t_i)\, W(x, X_i),
+\]
+where $W(x, X_i) = \prod_{j=1}^J K_j(\psi_j(x), \psi_j(X_i))$ collects all context weights. \newline
+
+Let $R$ be the $n \times M$ design matrix with rows $r_p(t_i)^\top$, and let the weight matrix be $W_x = \text{diag}\{K_0(t_i)\, W(x, X_i)\}$. The weighted least squares solution is:
+\[
+\hat{\beta}(x) = (R^\top W_x R)^{-1} R^\top W_x Y.
+\]
+We define the local moment matrix $S_n$ and the projection vector $T_n$:
+\[
+S_n = \frac{1}{n|H|} R^\top W_x R, \quad \quad T_n = \frac{1}{n|H|} R^\top W_x Y.
+\]
+Conditioning on the predictors $\mathbb{X} = \{X_1, \dots, X_n\}$, the expectation is:
+\[
+\E[\hat{\beta}(x) \mid \mathbb{X}] = S_n^{-1} \E[T_n \mid \mathbb{X}] = S_n^{-1} \left( \frac{1}{n|H|} R^\top W_x \mathbf{m} \right),
+\]
+where $\mathbf{m} = (m(Z_1, C_1), \dots, m(Z_n, C_n))^\top$.
+
+\subsection{Proof of Proposition \ref{prop:bias} (Bias)}
+Throughout the proof we use the notation of Appendix~A.1.
+
+\begin{proof}
+Fix a query point $x^\star$ and write $z:=\psi_0(x^\star)$, $c^\star$ for its context. 
+ Let $W_{x^\star}$ denote the diagonal weight matrix
+\[
+W_{x^\star}:=\mathrm{diag}\Bigl\{K_0\!\bigl(H^{-1}(Z_i-z)\bigr)\,W(x^\star,X_i)\Bigr\}_{i=1}^n .
+\]
+The weighted least-squares estimator is
+\[
+\hat\beta(x^\star)=(R^\top W_{x^\star}R)^{-1}R^\top W_{x^\star}Y,
+\qquad \hat m(x^\star)=e_1^\top \hat\beta(x^\star),
+\]
+where $e_1=(1,0,\dots,0)^\top$ selects the intercept.
+
+\medskip\noindent
+\paragraph*{\textbf{Conditional bias identity}}
+Define the scaled moment matrix and projection vector
+\[
+S_n:=\frac{1}{n|H|}R^\top W_{x^\star}R, 
+\qquad 
+T_n:=\frac{1}{n|H|}R^\top W_{x^\star}Y .
+\]
+Condition on the predictors $\mathbf{X}_n:=\{X_1,\dots,X_n\}$. Then $R$ and $W_{x^\star}$ are measurable with respect to $\sigma(\mathbf{X}_n)$, hence
+\[
+E[\hat\beta(x^\star)\mid \mathbf{X}_n]
+=
+S_n^{-1}E[T_n\mid \mathbf{X}_n].
+\]
+Under Assumption~\ref{ass:data} (zero-mean errors), $E[Y\mid\mathbf{X}_n]=\mathbf{m}$, so
+\[
+E[T_n\mid\mathbf{X}_n]=\frac{1}{n|H|}R^\top W_{x^\star}\mathbf{m}.
+\]
+For any deterministic coefficient vector $\beta(x^\star)\in\mathbb{R}^M$,
+\begin{align*}
+E[\hat\beta(x^\star)\mid\mathbf{X}_n]-\beta(x^\star)
+&=
+S_n^{-1}\left(\frac{1}{n|H|}R^\top W_{x^\star} \mathbf{m} \right)-S_n^{-1}\bigl(S_n\beta(x^\star)\bigr) \\
+&=
+S_n^{-1}\left(\frac{1}{n|H|}R^\top W_{x^\star}\bigl(\mathbf{m}-R\beta(x^\star)\bigr)\right).
+\end{align*}
+Define the numerator term
+\[
+Q_n:=\frac{1}{n|H|}R^\top W_{x^\star}\bigl(\mathbf{m}-R\beta(x^\star)\bigr),
+\]
+so that
+\[
+E[\hat\beta(x^\star)\mid\mathbf{X}_n]-\beta(x^\star)=S_n^{-1}Q_n.
+\]
+Consequently, the bias analysis reduces to (i) the asymptotics of $S_n$ and (ii) the asymptotics of $Q_n$.
+
+\medskip\noindent
+\paragraph*{\textbf{Limit of $S_n$ and the role of $E[W\mid Z]$}}
+Introduce the rescaled local coordinate
+\[
+t := H^{-1}(u-z)\qquad\text{equivalently}\qquad u=z+Ht,
+\]
+so that $K_0\!\bigl(H^{-1}(Z_i-z)\bigr)=K_0(t_i)$ with $t_i:=H^{-1}(Z_i-z)$.
+Define
+\[
+\mu_K(t):=r_p(t)\,r_p(t)^\top K_0(t),
+\qquad
+g_{x^\star}(u):=E[W(x^\star,X)\mid Z=u].
+\]
+A standard kernel law of large numbers (as in local polynomial regression; see, e.g., \cite{fan1996local}) yields, for interior $z$,
+\[
+S_n=\frac{1}{n|H|}\sum_{i=1}^n r_p(t_i)\,r_p(t_i)^\top K_0(t_i)\,W(x^\star,X_i)
+\;\xrightarrow{p}\;
+S:=\int \mu_K(t)\,g_{x^\star}(z+Ht)\,f_Z(z+Ht)\,dt.
+\]
+
+Under Assumption~\ref{ass:context}(a) (continuous contexts), $g_{x^\star}(\cdot)$ is locally Lipschitz in $Z$ around $z$, hence
+\[
+g_{x^\star}(z+Ht)=g_{x^\star}(z)+O(\|H\|\,\|t\|).
+\]
+By Assumption~\ref{ass:positivity}, $\phi_1(x^\star):=g_{x^\star}(z)=E[W(x^\star,X)\mid Z=z]$ is strictly positive and finite. Moreover, for interior $z$, $f_Z(z+Ht)=f_Z(z)+O(\|H\|)$. 
+Using the kernel moment assumptions (finite moments through order $p+2$), the $O(\|H\|\|t\|)$ term is integrable against $\mu_K(t)$, so
+\[
+S_n
+=
+\phi_1(x^\star)\,f_Z(z)\,M_0 + o_p(1),
+\qquad
+M_0:=\int r_p(t)r_p(t)^\top K_0(t)\,dt.
+\]
+
+\medskip\noindent
+\paragraph*{\textbf{Decomposition of $Q_n$ into $Z$-bias and context-smoothing bias}}
+Write the $i$th residual term in $\mathbf{m}-R\beta(x^\star)$ as
+\[
+m(Z_i,C_i)-r_p(Z_i-z)^\top\beta(x^\star)
+=
+\underbrace{\bigl(m(Z_i,c^\star)-r_p(Z_i-z)^\top\beta(x^\star)\bigr)}_{\text{(A) polynomial approximation in $Z$}}
++
+\underbrace{\bigl(m(Z_i,C_i)-m(Z_i,c^\star)\bigr)}_{\text{(B) context mismatch}}.
+\]
+Accordingly,
+\[
+Q_n = Q_{n,Z}+Q_{n,C},
+\]
+where $Q_{n,Z}$ is obtained by replacing $m(Z_i,C_i)$ with $m(Z_i,c^\star)$ in the residual, and $Q_{n,C}$ collects the remaining context mismatch term.
+
+\smallskip\noindent
+\emph{Context-smoothing contribution term.}
+The term $S_n^{-1}Q_{n,C}$ is precisely the bias induced by averaging over contexts through the weight $W(x^\star,X_i)$.
+We denote its intercept contribution by
+\[
+\mathrm{Bias}_C(\hat m(x^\star))
+:= e_1^\top S_n^{-1}Q_{n,C},
+\]
+and refer to it as $O(\mathrm{SmoothingBias}(C))$ (as in Proposition~\ref{prop:bias}). 
+If Assumption~\ref{ass:context}(b) holds (discrete/partitioned contexts) so that $W(x^\star,\cdot)$ is locally constant in $Z$ and isolates the appropriate context cell, or if in the continuous case the context bandwidths satisfy $\eta\to 0$ so that $W(x^\star,X_i)$ concentrates on $C_i\approx c^\star$, then $\mathrm{Bias}_C(\hat m(x^\star))\to 0$.
+
+\smallskip\noindent
+\emph{Polynomial approximation contribution in $Z$.}
+Choose $\beta(x^\star)$ to be the coefficient vector of the order-$p$ Taylor polynomial (in the first argument) of $u\mapsto m(u,c^\star)$ around $z$. Then, with $u=z+Ht$ and multi-index notation,
+\[
+m(z+Ht,c^\star)-r_p(t)^\top\beta(x^\star)
+=
+\frac{1}{(p+1)!}\sum_{|\alpha|=p+1} (D_Z^\alpha m)(z,c^\star)\,(Ht)^\alpha
++ o(\|H\|^{p+1}).
+\]
+
+Substituting this remainder into the kernel-weighted sum defining $Q_{n,Z}$ and applying the same kernel LLN as before yields
+\[
+Q_{n,Z}
+=
+\phi_1(x^\star)\,f_Z(z)\,B_{\mathrm{std}} + o(\|H\|^{p+1}),
+\]
+where $B_{\mathrm{std}}$ is the usual local-polynomial bias vector: it is linear in $\{(D_Z^\alpha m)(z,c^\star):|\alpha|=p+1\}$ and in the kernel moments
+$\int r_p(t)\,t^\alpha K_0(t)\,dt$, with the appropriate powers of $H$ carried by $(Ht)^\alpha$.
+
+\medskip\noindent
+\paragraph*{\textbf{Combine terms and conclude the bias order}}
+Using the preceding display,
+\[
+S_n^{-1}Q_{n,Z}
+=
+\bigl(\phi_1(x^\star)f_Z(z)M_0+o_p(1)\bigr)^{-1}\bigl(\phi_1(x^\star)f_Z(z)B_{\mathrm{std}}+o(\|H\|^{p+1})\bigr)
+=
+M_0^{-1}B_{\mathrm{std}} + o(\|H\|^{p+1}).
+\]
+The factors $\phi_1(x^\star)$ and $f_Z(z)$ cancel, so the leading $Z$-bias matches standard local polynomial regression. Therefore,
+\[
+\mathrm{Bias}\bigl(\hat m(x^\star)\bigr)
+=
+e_1^\top M_0^{-1}B_{\mathrm{std}}
++
+\mathrm{Bias}_C\bigl(\hat m(x^\star)\bigr)
++
+o(\|H\|^{p+1}),
+\]
+and hence
+\[
+\mathrm{Bias}\bigl(\hat m(x^\star)\bigr)=O(\|H\|^{p+1})+O(\mathrm{SmoothingBias}(C)).
+\]
+Moreover, under Assumption~\ref{ass:context}(b) (discrete contexts) or if $\eta\to 0$ in the continuous case, $\mathrm{SmoothingBias}(C)\to 0$, preserving the standard $O(\|H\|^{p+1})$ rate. This proves Proposition~1 (bias).
+\end{proof}
+
+\subsection{Proof of Proposition \ref{prop:variance} (Variance)}
+\begin{proof}
+The conditional variance is $\Var(\hat{\beta}(x) \mid \mathbb{X}) = S_n^{-1} \Sigma_n S_n^{-1}$, where:
+\[
+\Sigma_n = \frac{1}{(n|H|)^2} \mathbf{Z}^\top W_x^2 \Var(\mathbf{Y}|\mathbb{X}) \mathbf{Z}.
+\]
+Assuming $\Var(Y|X) = \sigma^2(Z, C)$, the integral limit of $\Sigma_n$ involves the squared weight:
+\[
+\Sigma \approx \frac{1}{n|H|} f_Z(z) \E[W(x,X)^2 \sigma^2(X) \mid Z=z] \underbrace{\int r_p(t) r_p(t)^\top K_0(t)^2 dt}_{\Omega_0}.
+\]
+Unlike the bias term, the expected weight terms do not cancel because $W$ appears squared in $\Sigma$ ($\E[W^2 \sigma^2]$) but linearly in $S$ ($\phi_1(x) = \E[W]$).
+\begin{align*}
+\Var(\hat{\beta}(x)) &\approx \frac{1}{n|H|} \frac{f_Z(z) \E[W^2 \sigma^2 \mid Z=z]}{(\phi_1(x) f_Z(z))^2} M_0^{-1} \Omega_0 M_0^{-1} \\
+&= \frac{1}{n|H| f_Z(z)} \left( M_0^{-1} \Omega_0 M_0^{-1} \right) \times \underbrace{\frac{\E[W(x,X)^2 \sigma^2(X) \mid Z=z]}{(\E[W(x,X) \mid Z=z])^2}}_{\Phi(x)}.
+\end{align*}
+This recovers the design effect $\Phi(x)$ presented in Proposition \ref{prop:variance}.
+
+\end{proof}
+\end{document}
