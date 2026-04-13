@@ -289,12 +289,61 @@ so that the compound kernel factorizes into Euclidean and context components:
 \[
 K_c(x,u)\;=\;K_{0,H}\!\big(\psi_0(x)-\psi_0(u)\big)\,W(x,u).
 \]
-Whenever \(\gamma_x(u)>0\), define the associated context-smoothed conditional mean
+Whenever \(\gamma_x(u)>0\) and the displayed conditional expectations are finite, define the associated context-smoothed conditional mean
 \[
 m_W(u;x)\coloneqq
 \frac{\mathbb{E}[Y\,W(x,X)\mid Z=u]}{\mathbb{E}[W(x,X)\mid Z=u]}
 =\frac{\mathbb{E}[Y\,W(x,X)\mid Z=u]}{\gamma_x(u)}.
 \]
+
+\begin{lemma}[Context-smoothed conditional target]
+\label{lem:mw_target}
+Fix \(x\in\mathcal{X}\) and \(u\in\mathbb{R}^d\) such that \(0<\gamma_x(u)<\infty\) and
+\[
+\mathbb{E}\!\left[Y^2\,W(x,X)\mid Z=u\right]<\infty.
+\]
+Then
+\[
+m_W(u;x)
+=
+\argmin_{\alpha\in\mathbb{R}}
+\mathbb{E}\!\left[(Y-\alpha)^2\,W(x,X)\mid Z=u\right].
+\]
+Equivalently, for every measurable function \(a:\mathbb{R}^d\to\mathbb{R}\),
+\[
+\mathbb{E}\!\left[(Y-a(Z))^2\,W(x,X)\mid Z=u\right]
+=
+\mathbb{E}\!\left[(Y-m_W(u;x))^2\,W(x,X)\mid Z=u\right]
++ \gamma_x(u)\,\big(a(u)-m_W(u;x)\big)^2.
+\]
+In particular, for each fixed \(u\), \(m_W(u;x)\) is the unique conditional weighted \(L^2\)-projection onto constants; equivalently, \(m_W(\cdot;x)\) is the pointwise conditional weighted \(L^2\)-projection target induced by the context weights.
+\end{lemma}
+\begin{proof}
+Fix \(u\) and \(\alpha\in\mathbb{R}\). Expanding the square gives
+\[
+(Y-\alpha)^2
+=
+(Y-m_W(u;x))^2
++2\big(\alpha-m_W(u;x)\big)\big(m_W(u;x)-Y\big)
++\big(\alpha-m_W(u;x)\big)^2.
+\]
+Multiplying by \(W(x,X)\), conditioning on \(Z=u\), and using
+\[
+\mathbb{E}\!\left[(Y-m_W(u;x))\,W(x,X)\mid Z=u\right]
+=
+\mathbb{E}\!\left[Y\,W(x,X)\mid Z=u\right]
+-m_W(u;x)\,\mathbb{E}\!\left[W(x,X)\mid Z=u\right]
+=0,
+\]
+yields
+\[
+\mathbb{E}\!\left[(Y-\alpha)^2\,W(x,X)\mid Z=u\right]
+=
+\mathbb{E}\!\left[(Y-m_W(u;x))^2\,W(x,X)\mid Z=u\right]
++\gamma_x(u)\big(\alpha-m_W(u;x)\big)^2.
+\]
+Since \(\gamma_x(u)>0\), the right-hand side is uniquely minimized at \(\alpha=m_W(u;x)\). Applying the scalar identity with \(\alpha=a(u)\), and noting that under the conditional law given \(Z=u\), \(a(Z)=a(u)\) almost surely, yields the second display.
+\end{proof}
 
 Under the modeling convention \(m_c(z)=\mathbb{E}[Y\mid Z=z,\,C=c]\), our estimand at
 \(x^\star\) is the context-specific mean \(m_{c^\star}(z)\). However, with finite context bandwidths,
@@ -335,21 +384,21 @@ uniformly bounded above: \(0\le K_j(\cdot,\cdot;\eta_j)\le \bar K_j<\infty\). (E
 factor by \(K_j/\bar K_j\in[0,1]\), which only rescales the weighted least-squares objective by a constant and does
 not change its minimizer.)
 
-Fix \(x^\star=(z,c^\star)\). Assume the conditional mean weight \(g_{x^\star}(u)=\mathbb{E}[W(x^\star,X)\mid Z=u]\)
+Fix \(x^\star=(z,c^\star)\). Assume the conditional mean weight \(\gamma_{x^\star}(u)=\mathbb{E}[W(x^\star,X)\mid Z=u]\)
 satisfies one of the following local regularity conditions in a neighborhood of \(z\):
 \begin{enumerate}[label=(\alph*)]
-    \item \textbf{Continuous contexts:} \(g_{x^\star}(u)\) is locally Lipschitz at \(z\); i.e., there exist
+    \item \textbf{Continuous contexts:} \(\gamma_{x^\star}(u)\) is locally Lipschitz at \(z\); i.e., there exist
     constants \(L<\infty\) and \(\delta>0\) such that
     \[
-    |g_{x^\star}(u)-g_{x^\star}(z)| \le L\|u-z\| \quad \text{whenever } \|u-z\|<\delta.
+    |\gamma_{x^\star}(u)-\gamma_{x^\star}(z)| \le L\|u-z\| \quad \text{whenever } \|u-z\|<\delta.
     \]
-    \item \textbf{Discrete/partitioned contexts:} \(g_{x^\star}(u)\) is locally constant in \(u\) near \(z\).
+    \item \textbf{Discrete/partitioned contexts:} \(\gamma_{x^\star}(u)\) is locally constant in \(u\) near \(z\).
 \end{enumerate}
 \end{assumption}
 
 \begin{assumption}[Positivity and second moments]
 \label{ass:positivity}
-Let \(\phi_1(x^\star)\coloneqq \mathbb{E}[W(x^\star,X)\mid Z=z]=g_{x^\star}(z)\) and
+Let \(\phi_1(x^\star)\coloneqq \mathbb{E}[W(x^\star,X)\mid Z=z]=\gamma_{x^\star}(z)\) and
 \(\phi_2(x^\star)\coloneqq \mathbb{E}[W(x^\star,X)^2\mid Z=z]\). Assume
 \(0<\underline{\phi}\le \phi_1(x^\star)\) and \(\phi_2(x^\star)<\infty\). In addition, assume
 \[
@@ -360,17 +409,9 @@ Let \(\phi_1(x^\star)\coloneqq \mathbb{E}[W(x^\star,X)\mid Z=z]=g_{x^\star}(z)\)
 
 \subsection{Bias and Variance}
 
-\begin{lemma}[Weighted-target (effective problem) representation]
+\begin{lemma}[Effective population LPR problem]
 \label{lem:weighted_target}
-Fix a query point \(x\in\mathcal{X}\) and write \(z=\psi_0(x)\). For any measurable function
-\(a:\mathbb{R}^d\to\mathbb{R}\),
-\[
-\mathbb{E}\!\left[(Y-a(Z))^2\,W(x,X)\mid Z=u\right]
-=
-\mathbb{E}\!\left[(Y-m_W(u;x))^2\,W(x,X)\mid Z=u\right]
-+ g_x(u)\,\big(a(u)-m_W(u;x)\big)^2.
-\]
-Consequently, the population objective
+Fix a query point \(x\in\mathcal{X}\) and write \(z=\psi_0(x)\). The population objective
 \[
 \Jcal_{\mathrm{gc-lpr}}(x;\beta)
 := \mathbb{E}\Big[(Y - r_p(Z-\psi_0(x))^\top\beta(x))^2\,K_{0,H}(Z-\psi_0(x))\,W(x,X)\Big]
@@ -379,11 +420,21 @@ is, up to an additive constant independent of \(\beta\), equal to
 \[
 \tilde{\Jcal}_{\mathrm{gc-lpr}}(x;\beta)
 =
-\int \Big(m_W(u;x)-r_p(u-z)^\top\beta(x)\Big)^2\,K_{0,H}(u-z)\,g_x(u)\,f_Z(u)\,du.
+\int \Big(m_W(u;x)-r_p(u-z)^\top\beta(x)\Big)^2\,K_{0,H}(u-z)\,\gamma_x(u)\,f_Z(u)\,du.
 \]
 In particular, GC-LPR is (population-wise) standard local polynomial regression for the target \(m_W(\cdot;x)\)
-under the effective design density \(u\mapsto f_Z(u)\,g_x(u)\).
+under the effective design density \(u\mapsto f_Z(u)\,\gamma_x(u)\).
 \end{lemma}
+\begin{proof}
+Apply Lemma~\ref{lem:mw_target} with \(a(Z)=r_p(Z-\psi_0(x))^\top\beta(x)\), multiply by \(K_{0,H}(Z-\psi_0(x))\), and take expectations. The additive term
+\[
+\mathbb{E}\Big[(Y-m_W(Z;x))^2\,K_{0,H}(Z-\psi_0(x))\,W(x,X)\Big]
+\]
+does not depend on \(\beta\), and the remaining term reduces by iterated expectation to
+\[
+\int \Big(m_W(u;x)-r_p(u-z)^\top\beta(x)\Big)^2\,K_{0,H}(u-z)\,\gamma_x(u)\,f_Z(u)\,du.
+\]
+\end{proof}
 
 \begin{proposition}[Bias and consistency]
 \label{prop:bias}
@@ -701,159 +752,38 @@ where $\mathbf{m} = (m(Z_1, C_1), \dots, m(Z_n, C_n))^\top$.
 Throughout the proof we use the notation of Appendix~A.1.
 
 \begin{proof}
-Fix a query point $x^\star$ and write $z:=\psi_0(x^\star)$, $c^\star$ for its context. 
- Let $W_{x^\star}$ denote the diagonal weight matrix
+Fix a query point $x^\star$ and write $z:=\psi_0(x^\star)$, with context $c^\star$.
+By Lemma~\ref{lem:mw_target}, the context-smoothed mean \(m_W(u;x^\star)\) is, for each \(u\), the unique conditional weighted least-squares target induced by the context weight \(W(x^\star,X)\). By Lemma~\ref{lem:weighted_target}, the population GC-LPR objective at \(x^\star\),
 \[
-W_{x^\star}:=\mathrm{diag}\Bigl\{K_0\!\bigl(H^{-1}(Z_i-z)\bigr)\,W(x^\star,X_i)\Bigr\}_{i=1}^n .
+\Jcal_{\mathrm{gc-lpr}}(x^\star;\beta),
 \]
-The weighted least-squares estimator is
+is, up to an additive constant independent of \(\beta\), exactly the standard local polynomial objective for the target \(m_W(\cdot;x^\star)\) under the effective design density
 \[
-\hat\beta(x^\star)=(R^\top W_{x^\star}R)^{-1}R^\top W_{x^\star}Y,
-\qquad \hat m(x^\star)=e_1^\top \hat\beta(x^\star),
+u\mapsto f_Z(u)\,\gamma_{x^\star}(u).
 \]
-where $e_1=(1,0,\dots,0)^\top$ selects the intercept.
 
-\medskip\noindent
-\paragraph*{\textbf{Conditional bias identity}}
-Define the scaled moment matrix and projection vector
+Under Assumptions~\ref{ass:data}--\ref{ass:positivity}, this induced problem satisfies the usual local regularity conditions near \(z\): \(m_W(\cdot;x^\star)\in C^{p+1}\) by Assumption~\ref{ass:data}, \(f_Z\) is continuous with \(f_Z(z)>0\), \(\gamma_{x^\star}(z)=\phi_1(x^\star)>0\) by Assumption~\ref{ass:positivity}, and \(\gamma_{x^\star}\) is locally Lipschitz or locally constant near \(z\) by Assumption~\ref{ass:context}. Therefore the standard local polynomial bias expansion applies to the intercept estimator for this effective problem (see, e.g., \cite{fan1996local,loader1999local}), yielding
 \[
-S_n:=\frac{1}{n|H|}R^\top W_{x^\star}R, 
-\qquad 
-T_n:=\frac{1}{n|H|}R^\top W_{x^\star}Y .
+\mathbb{E}\big[\hat m(x^\star)\big]-m_W(z;x^\star)
+=O(\|H\|^{p+1}).
 \]
-Condition on the predictors $\mathbf{X}_n:=\{X_1,\dots,X_n\}$. Then $R$ and $W_{x^\star}$ are measurable with respect to $\sigma(\mathbf{X}_n)$, hence
+
+Now add and subtract \(m_W(z;x^\star)\):
 \[
-E[\hat\beta(x^\star)\mid \mathbf{X}_n]
+\mathbb{E}\big[\hat m(x^\star)\big]-m_{c^\star}(z)
 =
-S_n^{-1}E[T_n\mid \mathbf{X}_n].
-\]
-Under Assumption~\ref{ass:data} (zero-mean errors), $E[Y\mid\mathbf{X}_n]=\mathbf{m}$, so
-\[
-E[T_n\mid\mathbf{X}_n]=\frac{1}{n|H|}R^\top W_{x^\star}\mathbf{m}.
-\]
-For any deterministic coefficient vector $\beta(x^\star)\in\mathbb{R}^M$,
-\begin{align*}
-E[\hat\beta(x^\star)\mid\mathbf{X}_n]-\beta(x^\star)
-&=
-S_n^{-1}\left(\frac{1}{n|H|}R^\top W_{x^\star} \mathbf{m} \right)-S_n^{-1}\bigl(S_n\beta(x^\star)\bigr) \\
-&=
-S_n^{-1}\left(\frac{1}{n|H|}R^\top W_{x^\star}\bigl(\mathbf{m}-R\beta(x^\star)\bigr)\right).
-\end{align*}
-Define the numerator term
-\[
-Q_n:=\frac{1}{n|H|}R^\top W_{x^\star}\bigl(\mathbf{m}-R\beta(x^\star)\bigr),
-\]
-so that
-\[
-E[\hat\beta(x^\star)\mid\mathbf{X}_n]-\beta(x^\star)=S_n^{-1}Q_n.
-\]
-Consequently, the bias analysis reduces to (i) the asymptotics of $S_n$ and (ii) the asymptotics of $Q_n$.
-
-\medskip\noindent
-\paragraph*{\textbf{Limit of $S_n$ and the role of $E[W\mid Z]$}}
-Introduce the rescaled local coordinate
-\[
-t := H^{-1}(u-z)\qquad\text{equivalently}\qquad u=z+Ht,
-\]
-so that $K_0\!\bigl(H^{-1}(Z_i-z)\bigr)=K_0(t_i)$ with $t_i:=H^{-1}(Z_i-z)$.
-Define
-\[
-\mu_K(t):=r_p(t)\,r_p(t)^\top K_0(t),
-\qquad
-g_{x^\star}(u):=E[W(x^\star,X)\mid Z=u].
-\]
-A standard kernel law of large numbers (as in local polynomial regression; see, e.g., \cite{fan1996local}) yields, for interior $z$,
-\[
-S_n=\frac{1}{n|H|}\sum_{i=1}^n r_p(t_i)\,r_p(t_i)^\top K_0(t_i)\,W(x^\star,X_i)
-\;\xrightarrow{p}\;
-S:=\int \mu_K(t)\,g_{x^\star}(z+Ht)\,f_Z(z+Ht)\,dt.
-\]
-
-Under Assumption~\ref{ass:context}(a) (continuous contexts), $g_{x^\star}(\cdot)$ is locally Lipschitz in $Z$ around $z$, hence
-\[
-g_{x^\star}(z+Ht)=g_{x^\star}(z)+O(\|H\|\,\|t\|).
-\]
-By Assumption~\ref{ass:positivity}, $\phi_1(x^\star):=g_{x^\star}(z)=E[W(x^\star,X)\mid Z=z]$ is strictly positive and finite. Moreover, for interior $z$, $f_Z(z+Ht)=f_Z(z)+O(\|H\|)$. 
-Using the kernel moment assumptions (finite moments through order $p+2$), the $O(\|H\|\|t\|)$ term is integrable against $\mu_K(t)$, so
-\[
-S_n
-=
-\phi_1(x^\star)\,f_Z(z)\,M_0 + o_p(1),
-\qquad
-M_0:=\int r_p(t)r_p(t)^\top K_0(t)\,dt.
-\]
-
-\medskip\noindent
-\paragraph*{\textbf{Decomposition of $Q_n$ into $Z$-bias and context-smoothing bias}}
-Write the $i$th residual term in $\mathbf{m}-R\beta(x^\star)$ as
-\[
-m(Z_i,C_i)-r_p(Z_i-z)^\top\beta(x^\star)
-=
-\underbrace{\bigl(m(Z_i,c^\star)-r_p(Z_i-z)^\top\beta(x^\star)\bigr)}_{\text{(A) polynomial approximation in $Z$}}
+\Big(\mathbb{E}\big[\hat m(x^\star)\big]-m_W(z;x^\star)\Big)
 +
-\underbrace{\bigl(m(Z_i,C_i)-m(Z_i,c^\star)\bigr)}_{\text{(B) context mismatch}}.
+\Big(m_W(z;x^\star)-m_{c^\star}(z)\Big).
 \]
-Accordingly,
+The first term is the polynomial approximation bias in the \(Z\)-coordinates and is \(O(\|H\|^{p+1})\); the second is the context-smoothing gap. Hence
 \[
-Q_n = Q_{n,Z}+Q_{n,C},
-\]
-where $Q_{n,Z}$ is obtained by replacing $m(Z_i,C_i)$ with $m(Z_i,c^\star)$ in the residual, and $Q_{n,C}$ collects the remaining context mismatch term.
-
-\smallskip\noindent
-\emph{Context-smoothing contribution term.}
-The term $S_n^{-1}Q_{n,C}$ is precisely the bias induced by averaging over contexts through the weight $W(x^\star,X_i)$.
-We denote its intercept contribution by
-\[
-\mathrm{Bias}_C(\hat m(x^\star))
-:= e_1^\top S_n^{-1}Q_{n,C},
-\]
-and refer to it as $O(\mathrm{SmoothingBias}(C))$ (as in Proposition~\ref{prop:bias}). 
-If Assumption~\ref{ass:context}(b) holds (discrete/partitioned contexts) so that $W(x^\star,\cdot)$ is locally constant in $Z$ and isolates the appropriate context cell, or if in the continuous case the context bandwidths satisfy $\eta\to 0$ so that $W(x^\star,X_i)$ concentrates on $C_i\approx c^\star$, then $\mathrm{Bias}_C(\hat m(x^\star))\to 0$.
-
-\smallskip\noindent
-\emph{Polynomial approximation contribution in $Z$.}
-Choose $\beta(x^\star)$ to be the coefficient vector of the order-$p$ Taylor polynomial (in the first argument) of $u\mapsto m(u,c^\star)$ around $z$. Then, with $u=z+Ht$ and multi-index notation,
-\[
-m(z+Ht,c^\star)-r_p(t)^\top\beta(x^\star)
+\mathbb{E}\big[\hat m(x^\star)\big]-m_{c^\star}(z)
 =
-\frac{1}{(p+1)!}\sum_{|\alpha|=p+1} (D_Z^\alpha m)(z,c^\star)\,(Ht)^\alpha
-+ o(\|H\|^{p+1}).
+O(\|H\|^{p+1})+\Big(m_W(z;x^\star)-m_{c^\star}(z)\Big).
 \]
 
-Substituting this remainder into the kernel-weighted sum defining $Q_{n,Z}$ and applying the same kernel LLN as before yields
-\[
-Q_{n,Z}
-=
-\phi_1(x^\star)\,f_Z(z)\,B_{\mathrm{std}} + o(\|H\|^{p+1}),
-\]
-where $B_{\mathrm{std}}$ is the usual local-polynomial bias vector: it is linear in $\{(D_Z^\alpha m)(z,c^\star):|\alpha|=p+1\}$ and in the kernel moments
-$\int r_p(t)\,t^\alpha K_0(t)\,dt$, with the appropriate powers of $H$ carried by $(Ht)^\alpha$.
-
-\medskip\noindent
-\paragraph*{\textbf{Combine terms and conclude the bias order}}
-Using the preceding display,
-\[
-S_n^{-1}Q_{n,Z}
-=
-\bigl(\phi_1(x^\star)f_Z(z)M_0+o_p(1)\bigr)^{-1}\bigl(\phi_1(x^\star)f_Z(z)B_{\mathrm{std}}+o(\|H\|^{p+1})\bigr)
-=
-M_0^{-1}B_{\mathrm{std}} + o(\|H\|^{p+1}).
-\]
-The factors $\phi_1(x^\star)$ and $f_Z(z)$ cancel, so the leading $Z$-bias matches standard local polynomial regression. Therefore,
-\[
-\mathrm{Bias}\bigl(\hat m(x^\star)\bigr)
-=
-e_1^\top M_0^{-1}B_{\mathrm{std}}
-+
-\mathrm{Bias}_C\bigl(\hat m(x^\star)\bigr)
-+
-o(\|H\|^{p+1}),
-\]
-and hence
-\[
-\mathrm{Bias}\bigl(\hat m(x^\star)\bigr)=O(\|H\|^{p+1})+O(\mathrm{SmoothingBias}(C)).
-\]
-Moreover, under Assumption~\ref{ass:context}(b) (discrete contexts) or if $\eta\to 0$ in the continuous case, $\mathrm{SmoothingBias}(C)\to 0$, preserving the standard $O(\|H\|^{p+1})$ rate. This proves Proposition~1 (bias).
+If the context kernels enforce exact selection of the context cell containing \(c^\star\), then \(m_W(z;x^\star)=m_{c^\star}(z)\) and the smoothing term vanishes. In the continuous-context case, shrinking the context bandwidths sharpens the selection and can reduce \(\big|m_W(z;x^\star)-m_{c^\star}(z)\big|\), at the cost of increased variance through a smaller effective sample size. This proves Proposition~\ref{prop:bias}.
 \end{proof}
 
 \subsection{Proof of Proposition \ref{prop:variance} (Variance)}
