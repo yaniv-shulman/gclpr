@@ -5,6 +5,7 @@
 .mypy_cache/
 .pytest_cache/
 /dist/
+/out/
 
 # Compiled Python bytecode
 __pycache__/
