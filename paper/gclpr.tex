@@ -369,13 +369,18 @@ satisfies one of the following local regularity conditions in a neighborhood of 
 \end{enumerate}
 \end{assumption}
 
-\begin{assumption}[Positivity and second moments]
+\begin{assumption}[Positivity]
 \label{ass:positivity}
 Let \(\phi_1(x^\star)\coloneqq \mathbb{E}[W(x^\star,X)\mid Z=z]=\gamma_{x^\star}(z)\) and
 \(\phi_2(x^\star)\coloneqq \mathbb{E}[W(x^\star,X)^2\mid Z=z]\). Assume
-\(0<\underline{\phi}\le \phi_1(x^\star)\) and \(\phi_2(x^\star)<\infty\). In addition, assume
+\(0<\underline{\phi}\le \phi_1(x^\star)\) and \(\phi_2(x^\star)<\infty\).
+\end{assumption}
+
+\begin{assumption}[Effective residual second moment]
+\label{ass:variance_moment}
+Fix \(x^\star=(z,c^\star)\). Assume
 \[
-\mathbb{E}\!\left[\,W(x^\star,X)^2\,\sigma^2(Z,C)\mid Z=z\,\right]<\infty.
+\mathbb{E}\!\left[\,W(x^\star,X)^2\,\big(Y-m_W(Z;x^\star)\big)^2\mid Z=z\,\right]<\infty.
 \]
 \end{assumption}
 
@@ -439,31 +444,35 @@ term vanishes and the \(O(\|H\|^{p+1})\) rate is preserved. In the continuous-co
 context kernels (smaller \(\eta\)) can reduce \(\big|m_W(z;x^\star)-m_{c^\star}(z)\big|\), typically at the
 cost of increased variance through a smaller effective sample size.
 \end{proposition}
-Proof in Appendix~\ref{app:proof_bias}.
+Proof in~\ref{app:proof_bias}.
 
 
 \begin{proposition}[Asymptotic variance]
 \label{prop:variance}
-Under Assumptions \ref{ass:data}--\ref{ass:positivity}, for interior \(x\),
+Under Assumptions \ref{ass:data}--\ref{ass:variance_moment}, for interior \(x\),
 \[
 \mathrm{Var}\{\hat m(x)\}\ \approx\ \frac{1}{n|H|}\,\frac{1}{f_Z(z)}\;
 e_1^\top M_0^{-1}\,\Omega_0\,M_0^{-1} e_1\ \times\ \Phi(x),
 \]
 where \(M_0\) and \(\Omega_0\) are the standard moment matrices for \(K_0\), and
 \[
-\Phi(x)=\frac{\mathbb{E}\big[\,W(x,X)^2\,\sigma^2(Z,C)\mid Z=z\,\big]}
+\Phi(x)=\frac{\mathbb{E}\big[\,W(x,X)^2\,\big(Y-m_W(Z;x)\big)^2\mid Z=z\,\big]}
 {\mathbb{E}\big[\,W(x,X)\mid Z=z\,\big]^2}
 \]
-is the context design effect (see Appendix for definitions).
+is the effective residual factor. Under the model \(Y=m(Z,C)+\varepsilon\) with \(\mathbb{E}[\varepsilon\mid Z,C]=0\),
+\[
+\Phi(x)=
+\frac{\mathbb{E}\big[\,W(x,X)^2\big\{\sigma^2(Z,C)+\big(m(Z,C)-m_W(Z;x)\big)^2\big\}\mid Z=z\,\big]}
+{\mathbb{E}\big[\,W(x,X)\mid Z=z\,\big]^2}.
+\]
 \end{proposition}
 
-The context design effect factor \(\Phi(x)\) quantifies the statistical cost of context isolation:
+Proof in~\ref{app:proof_variance}. The effective residual factor \(\Phi(x)\) quantifies the statistical cost of context isolation and context mixing:
 \begin{itemize}
     \item \textbf{Recovery of standard LPR:} If \(W\equiv 1\) (no context weights) and errors are
-    homoskedastic, then \(\Phi(x)=\sigma^2\), recovering the standard LPR variance expression.
-    \item \textbf{Variance inflation:} When context weights are sparse or highly variable (e.g., focusing
-    on a small manifold slice), \(\mathbb{E}[W^2]>(\mathbb{E}[W])^2\) by Jensen's inequality. Consequently,
-    \(\Phi(x)\) increases, reflecting the reduction in effective sample size caused by the context filter. This highlights that GC-LPR does not eliminate the curse of dimensionality, but rather converts model bias into variance. While the method allows for complex dependencies, a low-variance estimate still requires a sufficiently dense sample in the joint $(Z,C)$ space.
+    homoskedastic and the model reduces to \(Y=m(Z)+\varepsilon\), then \(\Phi(x)=\sigma^2\), recovering the standard LPR variance expression.
+    \item \textbf{Context-mixing variation:} Even when \(\sigma^2(Z,C)=0\), \(\Phi(x)\) can remain positive if multiple contexts contribute nontrivially to the target \(m_W(\cdot;x)\) at a given \(Z=z\), through the term \(\big(m(Z,C)-m_W(Z;x)\big)^2\).
+    \item \textbf{Weight-induced inflation:} When context weights are sparse or highly variable (e.g., focusing on a small manifold slice), the squared-weight numerator relative to \(\mathbb{E}[W\mid Z=z]^2\) inflates variance, reflecting the reduction in effective sample size caused by the context filter. This highlights that GC-LPR does not eliminate the curse of dimensionality, but rather converts model bias into variance. While the method allows for complex dependencies, a low-variance estimate still requires a sufficiently dense sample in the joint $(Z,C)$ space.
 \end{itemize}
 
 \section{Applications and Experiments}
@@ -820,22 +829,42 @@ O(\|H\|^{p+1})+\Big(m_W(z;x^\star)-m_{c^\star}(z)\Big).
 If the context kernels enforce exact selection of the context cell containing \(c^\star\), then \(m_W(z;x^\star)=m_{c^\star}(z)\) and the smoothing term vanishes. In the continuous-context case, shrinking the context bandwidths sharpens the selection and can reduce \(\big|m_W(z;x^\star)-m_{c^\star}(z)\big|\), at the cost of increased variance through a smaller effective sample size. This proves Proposition~\ref{prop:bias}.
 \end{proof}
 
-\subsection{Proof of Proposition \ref{prop:variance} (Variance)}
+\subsection{Proof of Proposition \ref{prop:variance} (Asymptotic variance)}
+\label{app:proof_variance}
 \begin{proof}
-The conditional variance is $\Var(\hat{\beta}(x) \mid \mathbb{X}) = S_n^{-1} \Sigma_n S_n^{-1}$, where:
+By Lemma~\ref{lem:weighted_target}, the variance analysis is that of standard local polynomial regression for the target \(m_W(\cdot;x)\) under the effective design density \(u\mapsto f_Z(u)\gamma_x(u)\). Define the effective residual
 \[
-\Sigma_n = \frac{1}{(n|H|)^2} \mathbf{Z}^\top W_x^2 \Var(\mathbf{Y}|\mathbb{X}) \mathbf{Z}.
+\xi_x \coloneqq Y-m_W(Z;x).
 \]
-Assuming $\Var(Y|X) = \sigma^2(Z, C)$, the integral limit of $\Sigma_n$ involves the squared weight:
+By Lemma~\ref{lem:mw_target},
 \[
-\Sigma \approx \frac{1}{n|H|} f_Z(z) \E[W(x,X)^2 \sigma^2(X) \mid Z=z] \underbrace{\int r_p(t) r_p(t)^\top K_0(t)^2 dt}_{\Omega_0}.
+\mathbb{E}\!\left[\xi_x\,W(x,X)\mid Z=u\right]=0,
 \]
-Unlike the bias term, the expected weight terms do not cancel because $W$ appears squared in $\Sigma$ ($\E[W^2 \sigma^2]$) but linearly in $S$ ($\phi_1(x) = \E[W]$).
+so the standard local polynomial covariance calculation for the effective problem yields
+\[
+\Sigma \approx \frac{1}{n|H|} f_Z(z)\,\mathbb{E}\!\left[W(x,X)^2\,\xi_x^2\mid Z=z\right] \underbrace{\int r_p(t) r_p(t)^\top K_0(t)^2 dt}_{\Omega_0}.
+\]
+Meanwhile the local moment matrix satisfies
+\[
+S_n \to \phi_1(x)\,f_Z(z)\,M_0,
+\qquad
+\phi_1(x)=\mathbb{E}[W(x,X)\mid Z=z].
+\]
 \begin{align*}
-\Var(\hat{\beta}(x)) &\approx \frac{1}{n|H|} \frac{f_Z(z) \E[W^2 \sigma^2 \mid Z=z]}{(\phi_1(x) f_Z(z))^2} M_0^{-1} \Omega_0 M_0^{-1} \\
-&= \frac{1}{n|H| f_Z(z)} \left( M_0^{-1} \Omega_0 M_0^{-1} \right) \times \underbrace{\frac{\E[W(x,X)^2 \sigma^2(X) \mid Z=z]}{(\E[W(x,X) \mid Z=z])^2}}_{\Phi(x)}.
+\Var(\hat{\beta}(x)) &\approx \frac{1}{n|H|} \frac{f_Z(z)\,\E[W(x,X)^2\,\xi_x^2 \mid Z=z]}{(\phi_1(x) f_Z(z))^2} M_0^{-1} \Omega_0 M_0^{-1} \\
+&= \frac{1}{n|H| f_Z(z)} \left( M_0^{-1} \Omega_0 M_0^{-1} \right) \times \underbrace{\frac{\E[W(x,X)^2\,\big(Y-m_W(Z;x)\big)^2 \mid Z=z]}{(\E[W(x,X) \mid Z=z])^2}}_{\Phi(x)}.
 \end{align*}
-This recovers the design effect $\Phi(x)$ presented in Proposition \ref{prop:variance}.
+Under the model \(Y=m(Z,C)+\varepsilon\),
+\[
+\xi_x = \big(m(Z,C)-m_W(Z;x)\big)+\varepsilon,
+\]
+so
+\[
+\mathbb{E}\!\left[W(x,X)^2\,\xi_x^2\mid Z=z\right]
+=
+\mathbb{E}\!\left[W(x,X)^2\big\{\sigma^2(Z,C)+\big(m(Z,C)-m_W(Z;x)\big)^2\big\}\mid Z=z\right],
+\]
+because the cross term vanishes after conditioning on \((Z,C)\) and using \(\mathbb{E}[\varepsilon\mid Z,C]=0\). This gives the stated form of \(\Phi(x)\).
 
 \end{proof}
 \end{document}
