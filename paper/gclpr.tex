@@ -318,34 +318,7 @@ Equivalently, for every measurable function \(a:\mathbb{R}^d\to\mathbb{R}\),
 \]
 In particular, for each fixed \(u\), \(m_W(u;x)\) is the unique conditional weighted \(L^2\)-projection onto constants; equivalently, \(m_W(\cdot;x)\) is the pointwise conditional weighted \(L^2\)-projection target induced by the context weights.
 \end{lemma}
-\begin{proof}
-Fix \(u\) and \(\alpha\in\mathbb{R}\). Expanding the square gives
-\[
-(Y-\alpha)^2
-=
-(Y-m_W(u;x))^2
-+2\big(\alpha-m_W(u;x)\big)\big(m_W(u;x)-Y\big)
-+\big(\alpha-m_W(u;x)\big)^2.
-\]
-Multiplying by \(W(x,X)\), conditioning on \(Z=u\), and using
-\[
-\mathbb{E}\!\left[(Y-m_W(u;x))\,W(x,X)\mid Z=u\right]
-=
-\mathbb{E}\!\left[Y\,W(x,X)\mid Z=u\right]
--m_W(u;x)\,\mathbb{E}\!\left[W(x,X)\mid Z=u\right]
-=0,
-\]
-yields
-\[
-\mathbb{E}\!\left[(Y-\alpha)^2\,W(x,X)\mid Z=u\right]
-=
-\mathbb{E}\!\left[(Y-m_W(u;x))^2\,W(x,X)\mid Z=u\right]
-+\gamma_x(u)\big(\alpha-m_W(u;x)\big)^2.
-\]
-Since \(\gamma_x(u)>0\), the right-hand side is uniquely minimized at \(\alpha=m_W(u;x)\). Applying the scalar identity with \(\alpha=a(u)\), and noting that under the conditional law given \(Z=u\), \(a(Z)=a(u)\) almost surely, yields the second display.
-\end{proof}
-
-Under the modeling convention \(m_c(z)=\mathbb{E}[Y\mid Z=z,\,C=c]\), our estimand at
+Proof in~\ref{app:proof_mw_target}. Under the modeling convention \(m_c(z)=\mathbb{E}[Y\mid Z=z,\,C=c]\), our estimand at
 \(x^\star\) is the context-specific mean \(m_{c^\star}(z)\). However, with finite context bandwidths,
 the estimator is naturally centered around the context-smoothed mean \(m_W(z;x^\star)\); the difference
 \(m_W(z;x^\star)-m_{c^\star}(z)\) captures the effect of smoothing (or borrowing strength) across contexts.
@@ -720,10 +693,10 @@ Ultimately, GC-LPR bridges the gap between interpretable classical statistics an
 
 \appendix
 
-\section{Proofs of Propositions 1 and 2}
+\section{Proofs}
 \label{app:proofs}
 
-In this section, we derive the asymptotic bias (Proposition \ref{prop:bias}) and variance (Proposition \ref{prop:variance}) of the GC-LPR estimator. The proof follows the standard derivation for local polynomial regression \citep{fan1996local} but explicitly tracks the influence of the compound context weight $W(x, u)$ to justify the assumptions regarding local smoothness.
+In this section, we collect proofs for the main population-identification and asymptotic results. The derivations follow the standard local polynomial regression arguments \citep{fan1996local} while explicitly tracking the influence of the compound context weight $W(x, u)$.
 
 \subsection{Notation and Setup}
 For simplicity of notation, throughout this appendix we define the chart coordinates used for the polynomial fit as $Z_i := \psi_0(X_i)$ and the query point as $z := \psi_0(x)$. The polynomial basis and the kernel $K_0$ operate on $Z$, while the context weights $W$ depend on the full predictors $X$.
@@ -747,6 +720,65 @@ Conditioning on the predictors $\mathbb{X} = \{X_1, \dots, X_n\}$, the expectati
 \E[\hat{\beta}(x) \mid \mathbb{X}] = S_n^{-1} \E[T_n \mid \mathbb{X}] = S_n^{-1} \left( \frac{1}{n|H|} R^\top W_x \mathbf{m} \right),
 \]
 where $\mathbf{m} = (m(Z_1, C_1), \dots, m(Z_n, C_n))^\top$.
+
+\subsection{Proof of Lemma \ref{lem:mw_target}}
+\label{app:proof_mw_target}
+Because Lemma \ref{lem:mw_target} is the population identification step underlying the later bias analysis, we record a slightly expanded derivation.
+
+\begin{proof}
+Fix \(x\in\mathcal{X}\) and \(u\in\mathbb{R}^d\), and write
+\[
+m_W:=m_W(u;x), \qquad \gamma:=\gamma_x(u).
+\]
+Throughout this proof, \(u\) is fixed, so \(\alpha\) and \(m_W\) are ordinary scalars in the conditional problem given \(Z=u\). Define
+\[
+L_u(\alpha)\coloneqq \mathbb{E}\!\left[(Y-\alpha)^2\,W(x,X)\mid Z=u\right].
+\]
+Under the lemma assumptions, \(0<\gamma<\infty\) and \(\mathbb{E}[Y^2W(x,X)\mid Z=u]<\infty\), so \(L_u(\alpha)\) is finite for each \(\alpha\in\mathbb{R}\).
+
+Now decompose
+\[
+Y-\alpha = (Y-m_W) + (m_W-\alpha).
+\]
+Therefore,
+\[
+(Y-\alpha)^2
+=
+(Y-m_W)^2 + 2(Y-m_W)(m_W-\alpha) + (m_W-\alpha)^2.
+\]
+Multiplying by \(W(x,X)\) and taking conditional expectations given \(Z=u\), we obtain
+\begin{align*}
+L_u(\alpha)
+&= \mathbb{E}\!\left[(Y-m_W)^2\,W(x,X)\mid Z=u\right] \\
+&\quad + 2(m_W-\alpha)\,\mathbb{E}\!\left[(Y-m_W)\,W(x,X)\mid Z=u\right] \\
+&\quad + (m_W-\alpha)^2\,\mathbb{E}\!\left[W(x,X)\mid Z=u\right].
+\end{align*}
+The cross-term vanishes because
+\[
+\mathbb{E}\!\left[(Y-m_W)\,W(x,X)\mid Z=u\right]
+=
+\mathbb{E}\!\left[Y\,W(x,X)\mid Z=u\right]
+- m_W\,\mathbb{E}\!\left[W(x,X)\mid Z=u\right]
+= 0,
+\]
+by the definition \(m_W=\mathbb{E}[Y\,W(x,X)\mid Z=u]/\gamma\) and \(\gamma=\mathbb{E}[W(x,X)\mid Z=u]\). Hence
+\[
+L_u(\alpha)
+=
+\mathbb{E}\!\left[(Y-m_W)^2\,W(x,X)\mid Z=u\right]
++ \gamma\,(\alpha-m_W)^2.
+\]
+Since \(\gamma>0\), the right-hand side is uniquely minimized at \(\alpha=m_W\), proving the scalar argmin statement.
+
+For the function version, let \(a:\mathbb{R}^d\to\mathbb{R}\) be measurable. Under the conditional law given \(Z=u\), one has \(a(Z)=a(u)\) almost surely. Applying the scalar identity with \(\alpha=a(u)\) yields
+\[
+\mathbb{E}\!\left[(Y-a(Z))^2\,W(x,X)\mid Z=u\right]
+=
+\mathbb{E}\!\left[(Y-m_W(u;x))^2\,W(x,X)\mid Z=u\right]
++ \gamma_x(u)\,\big(a(u)-m_W(u;x)\big)^2.
+\]
+This proves Lemma~\ref{lem:mw_target}.
+\end{proof}
 
 \subsection{Proof of Proposition \ref{prop:bias} (Bias)}
 Throughout the proof we use the notation of Appendix~A.1.
