@@ -711,15 +711,27 @@ In this section, we prove the main population-identification and asymptotic resu
 \subsection{Notation and Setup}
 For simplicity of notation, throughout this appendix we define the chart coordinates used for the polynomial fit as $Z_i := \psi_0(X_i)$ and the query point as $z := \psi_0(x)$. The polynomial basis and the kernel $K_0$ operate on $Z$, while the context weights $W$ depend on the full predictors $X$.
 
-Let $t_i := H^{-1}(Z_i - z)$ denote the rescaled local coordinate. The estimator at a query point $x$ is:
+The main text defines the estimator using the unscaled basis $r_p(Z_i-z)$. For asymptotic calculations, it is convenient to use the equivalent scaled basis $r_p(t_i)$, where
 \[
-\hat{\beta}(x) = \argmin_{\beta} \sum_{i=1}^n \left( Y_i - r_p(t_i)^\top \beta \right)^2 K_0(t_i)\, W(x, X_i),
+t_i := H^{-1}(Z_i-z).
+\]
+Because composing a polynomial of total degree at most $p$ with the linear map $H$ stays in the same polynomial space, there exists an invertible matrix $A_H$ such that
+\[
+r_p(Z_i-z)=A_H\,r_p(t_i).
+\]
+Hence the main-text objective can be reparameterized by a coefficient vector $\vartheta(x)=A_H^\top\beta(x)$, and the intercept is unchanged because the constant basis term is invariant:
+\[
+\hat m(x)=e_1^\top\hat\beta(x)=e_1^\top\hat\vartheta(x).
+\]
+The scaled-basis estimator at a query point $x$ is:
+\[
+\hat{\vartheta}(x) = \argmin_{\vartheta} \sum_{i=1}^n \left( Y_i - r_p(t_i)^\top \vartheta \right)^2 K_0(t_i)\, W(x, X_i),
 \]
 where $W(x, X_i) = \prod_{j=1}^J K_j(\psi_j(x), \psi_j(X_i))$ collects all context weights. \newline
 
 Let $R$ be the $n \times M$ design matrix with rows $r_p(t_i)^\top$, and let the weight matrix be $W_x = \text{diag}\{K_0(t_i)\, W(x, X_i)\}$. The weighted least squares solution is:
 \[
-\hat{\beta}(x) = (R^\top W_x R)^{-1} R^\top W_x Y.
+\hat{\vartheta}(x) = (R^\top W_x R)^{-1} R^\top W_x Y.
 \]
 We define the local moment matrix $S_n$ and the projection vector $T_n$:
 \[
@@ -727,7 +739,7 @@ S_n = \frac{1}{n|H|} R^\top W_x R, \quad \quad T_n = \frac{1}{n|H|} R^\top W_x Y
 \]
 Conditioning on the predictors $\mathbb{X} = \{X_1, \dots, X_n\}$, the expectation is:
 \[
-\E[\hat{\beta}(x) \mid \mathbb{X}] = S_n^{-1} \E[T_n \mid \mathbb{X}] = S_n^{-1} \left( \frac{1}{n|H|} R^\top W_x \mathbf{m} \right),
+\E[\hat{\vartheta}(x) \mid \mathbb{X}] = S_n^{-1} \E[T_n \mid \mathbb{X}] = S_n^{-1} \left( \frac{1}{n|H|} R^\top W_x \mathbf{m} \right),
 \]
 where $\mathbf{m} = (m(Z_1, C_1), \dots, m(Z_n, C_n))^\top$.
 
@@ -851,7 +863,7 @@ S_n \to \phi_1(x)\,f_Z(z)\,M_0,
 \phi_1(x)=\mathbb{E}[W(x,X)\mid Z=z].
 \]
 \begin{align*}
-\Var(\hat{\beta}(x)) &\approx \frac{1}{n|H|} \frac{f_Z(z)\,\E[W(x,X)^2\,\xi_x^2 \mid Z=z]}{(\phi_1(x) f_Z(z))^2} M_0^{-1} \Omega_0 M_0^{-1} \\
+\Var(\hat{\vartheta}(x)) &\approx \frac{1}{n|H|} \frac{f_Z(z)\,\E[W(x,X)^2\,\xi_x^2 \mid Z=z]}{(\phi_1(x) f_Z(z))^2} M_0^{-1} \Omega_0 M_0^{-1} \\
 &= \frac{1}{n|H| f_Z(z)} \left( M_0^{-1} \Omega_0 M_0^{-1} \right) \times \underbrace{\frac{\E[W(x,X)^2\,\big(Y-m_W(Z;x)\big)^2 \mid Z=z]}{(\E[W(x,X) \mid Z=z])^2}}_{\Phi(x)}.
 \end{align*}
 Under the model \(Y=m(Z,C)+\varepsilon\),
