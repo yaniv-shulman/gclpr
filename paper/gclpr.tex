@@ -409,7 +409,7 @@ does not depend on \(\beta\), and the remaining term reduces by iterated expecta
 \]
 \end{proof}
 
-\begin{proposition}[Bias and consistency]
+\begin{proposition}[Bias decomposition and rate]
 \label{prop:bias}
 Under Assumptions \ref{ass:data}--\ref{ass:positivity}, the GC-LPR intercept estimator
 \(\hat m(x)\coloneqq e_1^\top \hat\beta(x)\), where \(e_1=(1,0,\dots,0)\) selects the intercept term,
@@ -439,6 +439,7 @@ term vanishes and the \(O(\|H\|^{p+1})\) rate is preserved. In the continuous-co
 context kernels (smaller \(\eta\)) can reduce \(\big|m_W(z;x^\star)-m_{c^\star}(z)\big|\), typically at the
 cost of increased variance through a smaller effective sample size.
 \end{proposition}
+Proof in Appendix~\ref{app:proof_bias}.
 
 
 \begin{proposition}[Asymptotic variance]
@@ -696,7 +697,7 @@ Ultimately, GC-LPR bridges the gap between interpretable classical statistics an
 \section{Proofs}
 \label{app:proofs}
 
-In this section, we collect proofs for the main population-identification and asymptotic results. The derivations follow the standard local polynomial regression arguments \citep{fan1996local} while explicitly tracking the influence of the compound context weight $W(x, u)$.
+In this section, we prove the main population-identification and asymptotic results. The derivations follow the standard local polynomial regression arguments \citep{fan1996local} while explicitly tracking the influence of the compound context weight $W(x, u)$.
 
 \subsection{Notation and Setup}
 For simplicity of notation, throughout this appendix we define the chart coordinates used for the polynomial fit as $Z_i := \psi_0(X_i)$ and the query point as $z := \psi_0(x)$. The polynomial basis and the kernel $K_0$ operate on $Z$, while the context weights $W$ depend on the full predictors $X$.
@@ -721,7 +722,7 @@ Conditioning on the predictors $\mathbb{X} = \{X_1, \dots, X_n\}$, the expectati
 \]
 where $\mathbf{m} = (m(Z_1, C_1), \dots, m(Z_n, C_n))^\top$.
 
-\subsection{Proof of Lemma \ref{lem:mw_target}}
+\subsection{Proof of Lemma \ref{lem:mw_target} (Context-smoothed conditional target)}
 \label{app:proof_mw_target}
 Because Lemma \ref{lem:mw_target} is the population identification step underlying the later bias analysis, we record a slightly expanded derivation.
 
@@ -780,7 +781,8 @@ For the function version, let \(a:\mathbb{R}^d\to\mathbb{R}\) be measurable. Und
 This proves Lemma~\ref{lem:mw_target}.
 \end{proof}
 
-\subsection{Proof of Proposition \ref{prop:bias} (Bias)}
+\subsection{Proof of Proposition \ref{prop:bias} (Bias decomposition and rate)}
+\label{app:proof_bias}
 Throughout the proof we use the notation of Appendix~A.1.
 
 \begin{proof}
