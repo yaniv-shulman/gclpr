@@ -475,6 +475,27 @@ Proof in~\ref{app:proof_variance}. The effective residual factor \(\Phi(x)\) qua
     \item \textbf{Weight-induced inflation:} When context weights are sparse or highly variable (e.g., focusing on a small manifold slice), the squared-weight numerator relative to \(\mathbb{E}[W\mid Z=z]^2\) inflates variance, reflecting the reduction in effective sample size caused by the context filter. This highlights that GC-LPR does not eliminate the curse of dimensionality, but rather converts model bias into variance. While the method allows for complex dependencies, a low-variance estimate still requires a sufficiently dense sample in the joint $(Z,C)$ space.
 \end{itemize}
 
+\begin{corollary}[Consistency for the context-smoothed target]
+\label{cor:mw_consistency}
+Under Assumptions \ref{ass:data}--\ref{ass:variance_moment}, for interior \(x^\star\),
+\[
+\mathbb{E}\!\left[\big(\hat m(x^\star)-m_W(z;x^\star)\big)^2\right]
+=
+O\!\big(\|H\|^{2(p+1)}\big)+O\!\big((n|H|)^{-1}\big).
+\]
+Consequently, if \(\|H\|\to0\) and \(n|H|\to\infty\), then
+\[
+\hat m(x^\star)\xrightarrow{L^2} m_W(z;x^\star),
+\qquad
+\hat m(x^\star)\xrightarrow{P} m_W(z;x^\star).
+\]
+\end{corollary}
+\begin{proof}
+Proposition~\ref{prop:bias} gives \(\mathbb{E}[\hat m(x^\star)]-m_W(z;x^\star)=O(\|H\|^{p+1})\), while Proposition~\ref{prop:variance} and Assumptions~\ref{ass:positivity}--\ref{ass:variance_moment} give \(\Var\{\hat m(x^\star)\}=O((n|H|)^{-1})\); combine these with \(\mathbb{E}[(\hat m-m_W)^2]=\Var(\hat m)+(\mathbb{E}[\hat m]-m_W)^2\).
+\end{proof}
+
+This consistency statement is for the induced context-smoothed target \(m_W(z;x^\star)\). Consistency for the context-specific mean \(m_{c^\star}(z)\) requires additional assumptions on shrinking context bandwidths and regularity across contexts.
+
 \section{Applications and Experiments}
 \label{s:Experiments}
 \subsection{Experiment 1: Geospatial Context on California Housing}
