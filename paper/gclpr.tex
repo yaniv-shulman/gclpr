@@ -544,9 +544,11 @@ The primary comparison is between:
 
 \begin{itemize}
     \item \textbf{RSKLPR (Standard):} The baseline robust LPR, which uses a single, monolithic kernel over all standard features, including \texttt{Latitude} and \texttt{Longitude}.
-    \item \textbf{GRC-LPR (Subway):} Our proposed model. This defines the predictor kernel as a product of three distinct kernels:
+    \item \textbf{GRC-LPR (Subway):} Our proposed model. This combines a compound predictor kernel with the response-based robustness factor:
     $$
-    K_c = K_{\text{features}} \times K_{\text{subway}} \times K_r
+    K_c = K_{\text{features}} \times K_{\text{subway}},
+    \qquad
+    \K_{\D}^* = K_c \times K_r
     $$
     \begin{itemize}
         \item $K_{\text{features}}$: A kernel on the standard tabular features.
@@ -638,9 +640,13 @@ We compare feature-only models against our context-aware approach. All models we
         \item \textbf{Random Forest:} Tuned to \texttt{max\_depth=20} with 100 estimators.
         \item \textbf{LPR (Standard):} Uses a tricube kernel over $Z$ with the Mahalanobis metric. The cross-validation selected a large neighborhood size of \textbf{123 neighbors} with polynomial degree $p=1$.
     \end{itemize}
-    \item \textbf{GC-LPR (Graph):} Our proposed model utilizes the compound kernel:
+    \item \textbf{GRC-LPR (Graph):} Our proposed model utilizes the compound predictor kernel:
     \[
-    K_c(x, X_i) = K_{\text{feat}}(Z_i - Z_x) \times K_{\text{graph}}(C_i, C_x) \times K_r
+    K_c(x, X_i) = K_{\text{feat}}(Z_i - Z_x) \times K_{\text{graph}}(C_i, C_x)
+    \]
+    and, when the response-based robustness factor is used,
+    \[
+    \K_{\D}^* = K_c \times K_r.
     \]
     Here, $K_{\text{graph}}$ measures the shortest-path distance on the network. An extensive grid search (over 14,000 fits) selected a polynomial degree $p=1$, a robust conditional density weighting ($K_r=\text{'conden'}$), and a graph distance scale of $\approx \mathbf{0.31}$. This tight scale indicates that the optimal weighting decays rapidly as topological distance increases, enforcing strict structural locality. As shown in Figure~\ref{fig:airport_kernels}, the graph kernel assigns high weights to topologically connected nodes, effectively defining a non-Euclidean local neighborhood.
 \end{itemize}
@@ -681,7 +687,7 @@ Global Linear & 0.7664 & 0.2260 & 0.2944 \\ \bottomrule
 \end{tabular}
 \end{table}
 
-Standard LPR hits a performance ceiling (R² = 0.9048) despite using a large neighborhood (123 neighbors), as it smooths over airports that look similar in $Z$ but are topologically distant. GC-LPR (R² = \textbf{0.9256}) breaks this ceiling. By multiplying the feature kernel with the graph kernel, it localizes the regression to the specific branch of the network where the propagation occurred, confirming that explicit context kernels are necessary to recover $m(Z, C)$. 
+Standard LPR hits a performance ceiling (R² = 0.9048) despite using a large neighborhood (123 neighbors), as it smooths over airports that look similar in $Z$ but are topologically distant. GRC-LPR (R² = \textbf{0.9256}) breaks this ceiling. By multiplying the feature kernel with the graph kernel, it localizes the regression to the specific branch of the network where the propagation occurred, confirming that explicit context kernels are necessary to recover $m(Z, C)$. 
 
 
 \section{Conclusion}
