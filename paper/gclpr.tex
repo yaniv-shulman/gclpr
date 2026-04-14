@@ -501,9 +501,10 @@ This consistency statement is for the induced context-smoothed target \(m_W(z;x^
 \section{Applications and Experiments}
 \label{s:Experiments}
 All empirical results use the public Python implementation in the \texttt{rsklpr} package \citep{shulman2026rsklpr}, using the version 2.x series. This implementation employs adaptive \(k\)-nearest-neighbor neighborhoods rather than a fixed bandwidth matrix \(H\), so the experiments instantiate an adaptive-bandwidth analogue of the estimator, while the theory above is stated for fixed bandwidths.
+The empirical goal here is to compare GC/GRC-LPR against feature-only local polynomial smoothers and simple generic baselines, rather than to claim a benchmark against all task-specific spatial or graph regression model classes.
 \subsection{Experiment 1: Geospatial Context on California Housing}
 
-As a foundational validation of the proposed framework, we test the hypothesis that explicit context kernels improve performance even when contextual variables (coordinates) are already present in the primary feature set. We evaluate GC-LPR against standard LPR, its robust variant RSKLPR \citep{shulman2025robust}, and common baselines including K-Nearest Neighbors (KNN), Global Polynomial Ridge, and Global Linear regression.
+As a foundational validation of the proposed framework, we test the hypothesis that explicit context kernels improve performance even when contextual variables (coordinates) are already present in the primary feature set. This is intended as a within-family comparison against feature-only local smoothers rather than a full ablation of every geographic representation choice. We evaluate GC-LPR against standard LPR, its robust variant RSKLPR \citep{shulman2025robust}, and common baselines including K-Nearest Neighbors (KNN), Global Polynomial Ridge, and Global Linear regression.
 
 \paragraph{\textbf{Dataset and Setup}}
 We utilize the California Housing dataset \citep{pace1997sparse}, modeling the median house value (\texttt{MedHouseVal}) using a feature vector $Z$ containing \texttt{MedInc}, \texttt{AveRooms}, \texttt{Latitude}, and \texttt{Longitude}. Non-geospatial features were standardized. To ensure statistical rigor, we performed 10-fold cross-validation (CV), reporting the mean and standard deviation for all metrics.
@@ -563,7 +564,7 @@ Hyperparameter optimization revealed a consistent discrepancy in optimal neighbo
 The purpose of the second experiment is to demonstrate the use of a more advanced geospatial kernel that takes similar inputs as in Experiment 1 (i.e., \texttt{Latitude} and \texttt{Longitude}), but employs a non-Euclidean kernel on a graph. The goal is to show that standard distance metrics (Euclidean or Haversine) are often insufficient, and that a context-aware model can capture a more meaningful, network-based definition of proximity.
 
 \paragraph{\textbf{Dataset and Setup}}
-We use an NYC Airbnb dataset from Inside Airbnb \citep{insideairbnb2026nyc} to predict listing \texttt{price}. The features include standard tabular attributes (\texttt{host\_listings\_count}, \texttt{room\_type}, etc.) as well as \texttt{Latitude} and \texttt{Longitude}. We compare our GRC-LPR model against a standard LPR and other common baselines: Global Linear, Global Polynomial, and K-Nearest Neighbors. All models were tuned by 5-fold cross-validation. 
+We use an NYC Airbnb dataset from Inside Airbnb \citep{insideairbnb2026nyc} to predict listing \texttt{price}. The features include standard tabular attributes (\texttt{host\_listings\_count}, \texttt{room\_type}, etc.) as well as \texttt{Latitude} and \texttt{Longitude}. We compare our GRC-LPR model against a standard LPR and other common baselines: Global Linear, Global Polynomial, and K-Nearest Neighbors. The implementation uses a single train/test split, with all hyperparameters selected by 5-fold cross-validation on the training split; Table~\ref{tab:results_nyc} then reports the held-out test-set performance. Additional implementation details are collected in Appendix~\ref{app:exp_details}. 
 The primary comparison is between:
 
 \begin{itemize}
@@ -582,7 +583,7 @@ The primary comparison is between:
 \end{itemize}
 
 \paragraph{\textbf{Results}}
-The results in Table \ref{tab:results_nyc} show a clear performance hierarchy. The GRC-LPR (Subway) model, which fuses tabular features with the non-Euclidean subway graph kernel, significantly outperforms all other models. It achieves the highest R² and the lowest RMSE, validating that incorporating the network topology yields a more accurate model than relying on Euclidean coordinates alone.
+The held-out test-set results in Table \ref{tab:results_nyc} show a clear performance hierarchy. The GRC-LPR (Subway) model, which fuses tabular features with the non-Euclidean subway graph kernel, significantly outperforms all other models. It achieves the highest R² and the lowest RMSE, supporting the claim that incorporating the network topology can improve on a feature-only smoother using Euclidean coordinates alone.
 
 \paragraph{\textbf{Analysis of Hyperparameters}}
 The cross-validation results reveal distinct behaviors compared to the California Housing experiment. First, both LPR and GRC-LPR selected a polynomial degree of $p=0$ (Nadaraya-Watson), indicating that the local price surface is highly irregular, favoring local averaging over linear extrapolation. 
@@ -591,7 +592,7 @@ Second, regarding neighborhood size, standard LPR selected 18 neighbors, while G
 
 \begin{table}[h]
 \centering
-\caption{Model performance on the NYC Airbnb test set.}
+\caption{Model performance on the NYC Airbnb held-out test set after tuning on the training split by 5-fold cross-validation.}
 \label{tab:results_nyc}
 \begin{tabular}{@{}lrr@{}}
 \toprule
@@ -638,13 +639,12 @@ This experiment serves as the primary validation of our theoretical framework. W
 We construct a graph $G = (\mathcal{V}, \mathcal{E})$ representing the US domestic flight network, where nodes are airports and edges represent direct routes.
 \begin{itemize}
     \item \textbf{Node Features ($Z$):} For each airport, we compute a feature vector containing standard graph centrality metrics (\texttt{PageRank}, \texttt{Betweenness}, \texttt{Degree}) and geospatial coordinates (\texttt{Latitude}, \texttt{Longitude}). Crucially, these features describe the \emph{role} of a node, but not its unique position in the topology.
-    \item \textbf{Generative Process ($Y$):} We generate a synthetic "flight delay" signal that depends on both local features and network propagation. We model this via a diffusion process:
+    \item \textbf{Generative Process ($Y$):} We generate a synthetic "flight delay" signal that depends on both local features and network propagation. Let \(\widetilde{\mathrm{PR}}_i\), \(\widetilde{\mathrm{BW}}_i\), and \(\widetilde{\mathrm{Deg}}_i\) denote the standardized PageRank, betweenness, and degree features of node \(i\), and let \(\xi_i \stackrel{\mathrm{iid}}{\sim} N(0,1)\). The base signal is
     \begin{align*}
-        \tilde{Y}^{(0)}_i &= \gamma^\top Z_i + \xi_i, \\
-        \tilde{Y}^{(k+1)} &= \alpha \tilde{Y}^{(k)} + (1-\alpha) A \tilde{Y}^{(k)} \quad \text{for } k=0,\dots,6,
+        \tilde{Y}^{(0)}_i &= 0.3\,\widetilde{\mathrm{PR}}_i + 0.5\,\widetilde{\mathrm{BW}}_i + 0.2\,\widetilde{\mathrm{Deg}}_i + 0.1\,\xi_i, \\
+        \tilde{Y}^{(k+1)} &= 0.7\,\tilde{Y}^{(0)} + 0.3\,A\tilde{Y}^{(k)} \quad \text{for } k=0,\dots,6,
     \end{align*}
-    where $A$ is the normalized adjacency matrix with the traffic volume as the raw edge weights, $\xi_i$ is noise, and the final target is $Y := \tilde{Y}^{(7)}$.
-    For clarity, the synthetic propagation uses this traffic-weighted normalized adjacency, whereas the GC/GRC-LPR context kernel itself is built on the underlying undirected airport graph via a symmetric shortest-path similarity.
+    where \(A\) is the row-normalized traffic-weighted adjacency matrix and the final target is \(Y := \tilde{Y}^{(7)}\), shifted to remain strictly positive. For clarity, the synthetic propagation uses this traffic-weighted normalized adjacency, whereas the GC/GRC-LPR context kernel itself is built on the underlying undirected airport graph via a symmetric shortest-path similarity. Further implementation details are collected in Appendix~\ref{app:exp_details}.
 \end{itemize}
 
 This process creates a scenario where two airports with similar feature vectors $Z$ (e.g., two medium-sized hubs) may have vastly different $Y$ values if they lie in different diffusion clusters. Standard LPR with a kernel only in $Z$ cannot distinguish them; GC-LPR with graph context can. Figure~\ref{fig:airport_setup} illustrates the underlying network topology and the synthetic delay function used as the prediction target.
@@ -657,7 +657,7 @@ This process creates a scenario where two airports with similar feature vectors 
 \end{figure}
 
 \paragraph{\textbf{Models}}
-We compare feature-only models against our context-aware approach. All models were tuned via 10-fold cross-validation to ensure rigorous comparison.
+We compare feature-only models against our context-aware approach. The implementation uses a single train/test split, with all hyperparameters selected by 10-fold cross-validation on the training split; Table~\ref{tab:results_airport} reports the resulting held-out test-set performance.
 \begin{itemize}
     \item \textbf{Baselines:} 
     \begin{itemize}
@@ -696,11 +696,11 @@ We compare feature-only models against our context-aware approach. All models we
 \end{figure}
 
 \paragraph{\textbf{Results}}
-The results in Table \ref{tab:results_airport} demonstrate a critical limitation of feature-based smoothing. 
+The held-out test-set results in Table \ref{tab:results_airport} demonstrate a critical limitation of feature-based smoothing. Because the target is generated by graph propagation on the same underlying network later used to define the context kernel, this experiment should be read as a mechanism check for graph-structured dependence rather than as a broad benchmark against all graph regression methods.
 
 \begin{table}[h]
 \centering
-\caption{Model performance on the US Airport Network test set. The GRC-LPR (Graph) model, which explicitly models the graph topology, achieves the best results in estimating the node function.}
+\caption{Model performance on the US Airport Network held-out test set after tuning on the training split by 10-fold cross-validation. The GRC-LPR (Graph) model, which explicitly models the graph topology, achieves the best results in estimating the node function.}
 \label{tab:results_airport}
 \begin{tabular}{@{}lrrr@{}}
 \toprule
@@ -712,7 +712,7 @@ Global Linear & 0.7664 & 0.2260 & 0.2944 \\ \bottomrule
 \end{tabular}
 \end{table}
 
-Standard LPR hits a performance ceiling (R² = 0.9048) despite using a large neighborhood (123 neighbors), as it smooths over airports that look similar in $Z$ but are topologically distant. GRC-LPR (R² = \textbf{0.9256}) breaks this ceiling. By multiplying the feature kernel with the graph kernel, it localizes the regression to the specific branch of the network where the propagation occurred, confirming that explicit context kernels are necessary to recover $m(Z, C)$. 
+Standard LPR hits a performance ceiling (R² = 0.9048) despite using a large neighborhood (123 neighbors), as it smooths over airports that look similar in $Z$ but are topologically distant. GRC-LPR (R² = \textbf{0.9256}) breaks this ceiling. By multiplying the feature kernel with the graph kernel, it localizes the regression to the specific branch of the network where the propagation occurred, showing that explicit context kernels are useful for recovering this graph-structured $m(Z, C)$ within the local polynomial family.
 
 
 \section{Conclusion}
@@ -910,4 +910,13 @@ so
 because the cross term vanishes after conditioning on \((Z,C)\) and using \(\mathbb{E}[\varepsilon\mid Z,C]=0\). This gives the stated form of \(\Phi(x)\).
 
 \end{proof}
+
+\section{Experimental Implementation Details}
+\label{app:exp_details}
+
+\subsection{Evaluation Protocols for Experiments 2 and 3}
+Experiments 2 and 3 use single hold-out evaluations rather than outer repeated cross-validation. In Experiment 2, the NYC Airbnb data are split once into \(80\%\) training and \(20\%\) test data, and the reported model in Table~\ref{tab:results_nyc} is selected by 5-fold cross-validation on the training split. In Experiment 3, the airport data are split once into \(75\%\) training and \(25\%\) test data, and the reported model in Table~\ref{tab:results_airport} is selected by 10-fold cross-validation on the training split. The open-source release includes the full preprocessing and parameter grids used in these runs.
+
+\subsection{Synthetic Target Construction in Experiment 3}
+The airport graph is constructed as an undirected graph on direct routes. For the synthetic target, only the PageRank, betweenness, and degree features enter the base signal, after standardization; the latitude and longitude variables are included in the regression features but not in the base-delay formula. The propagation operator uses the traffic-weighted adjacency matrix, row-normalized so each row averages the delays of neighboring airports. The update is iterated for seven steps as displayed in Section~\ref{s:exp_airport}, and the final simulated delay is shifted so that the response remains strictly positive. The graph context kernel used by GRC-LPR is separate from this propagation step: it is computed from weighted shortest-path distance on the same underlying undirected graph, with edge length equal to the inverse route count, so the kernel itself is symmetric.
 \end{document}
