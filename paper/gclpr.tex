@@ -375,6 +375,7 @@ Let \(\phi_1(x^\star)\coloneqq \mathbb{E}[W(x^\star,X)\mid Z=z]=\gamma_{x^\star}
 \(\phi_2(x^\star)\coloneqq \mathbb{E}[W(x^\star,X)^2\mid Z=z]\). Assume
 \(0<\underline{\phi}\le \phi_1(x^\star)\) and \(\phi_2(x^\star)<\infty\).
 \end{assumption}
+Combined with Assumptions~\ref{ass:data} and \ref{ass:context}, this pointwise positivity implies that, after possibly shrinking the neighborhood of \(z\), both \(\gamma_{x^\star}(u)\) and the effective design density \(q_{x^\star}(u)\coloneqq f_Z(u)\gamma_{x^\star}(u)\) are bounded away from zero near \(z\).
 
 \begin{assumption}[Effective residual second moment]
 \label{ass:variance_moment}
@@ -443,6 +444,7 @@ In particular, if the context kernels enforce exact selection of the context cel
 term vanishes and the \(O(\|H\|^{p+1})\) rate is preserved. In the continuous-context case, sharpening the
 context kernels (smaller \(\eta\)) can reduce \(\big|m_W(z;x^\star)-m_{c^\star}(z)\big|\), typically at the
 cost of increased variance through a smaller effective sample size.
+The displayed \(O(\|H\|^{p+1})\) rate is a generic nonsharp umbrella upper bound inherited from the effective local polynomial problem; sharper interior rates depend on the usual parity refinements and are not pursued here.
 \end{proposition}
 Proof in~\ref{app:proof_bias}.
 
@@ -472,7 +474,7 @@ Proof in~\ref{app:proof_variance}. The effective residual factor \(\Phi(x)\) qua
     \item \textbf{Recovery of standard LPR:} If \(W\equiv 1\) (no context weights) and errors are
     homoskedastic and the model reduces to \(Y=m(Z)+\varepsilon\), then \(\Phi(x)=\sigma^2\), recovering the standard LPR variance expression.
     \item \textbf{Context-mixing variation:} Even when \(\sigma^2(Z,C)=0\), \(\Phi(x)\) can remain positive if multiple contexts contribute nontrivially to the target \(m_W(\cdot;x)\) at a given \(Z=z\), through the term \(\big(m(Z,C)-m_W(Z;x)\big)^2\).
-    \item \textbf{Weight-induced inflation:} When context weights are sparse or highly variable (e.g., focusing on a small manifold slice), the squared-weight numerator relative to \(\mathbb{E}[W\mid Z=z]^2\) inflates variance, reflecting the reduction in effective sample size caused by the context filter. This highlights that GC-LPR does not eliminate the curse of dimensionality, but rather converts model bias into variance. While the method allows for complex dependencies, a low-variance estimate still requires a sufficiently dense sample in the joint $(Z,C)$ space.
+    \item \textbf{Weight-induced inflation:} When context weights are sparse or highly variable (e.g., focusing on a small manifold slice), the squared-weight numerator relative to \(\mathbb{E}[W\mid Z=z]^2\) can inflate variance, especially when the effective residual variation is roughly homogeneous or only weakly related to the weights. This reflects the reduction in effective sample size caused by the context filter. GC-LPR therefore does not eliminate the curse of dimensionality; rather, it trades model bias against variance. While the method allows for complex dependencies, a low-variance estimate still requires a sufficiently dense sample in the joint $(Z,C)$ space.
 \end{itemize}
 
 \begin{corollary}[Consistency for the context-smoothed target]
