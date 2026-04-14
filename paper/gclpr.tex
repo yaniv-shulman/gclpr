@@ -320,7 +320,7 @@ In particular, for each fixed \(u\), \(m_W(u;x)\) is the unique conditional weig
 \end{lemma}
 Proof in~\ref{app:proof_mw_target}. Under the modeling convention \(m_c(z)=\mathbb{E}[Y\mid Z=z,\,C=c]\), our estimand at
 \(x^\star\) is the context-specific mean \(m_{c^\star}(z)\). However, with finite context bandwidths,
-the estimator is naturally centered around the context-smoothed mean \(m_W(z;x^\star)\); the difference
+the induced population target is the context-smoothed mean \(m_W(z;x^\star)\); the difference
 \(m_W(z;x^\star)-m_{c^\star}(z)\) captures the effect of smoothing (or borrowing strength) across contexts.
 
 
@@ -418,7 +418,7 @@ does not depend on \(\beta\), and the remaining term reduces by iterated expecta
 \label{prop:bias}
 Under Assumptions \ref{ass:data}--\ref{ass:positivity}, the GC-LPR intercept estimator
 \(\hat m(x)\coloneqq e_1^\top \hat\beta(x)\), where \(e_1=(1,0,\dots,0)\) selects the intercept term,
-is centered around the context-smoothed mean \(m_W(z;x^\star)\). Moreover, its bias relative to the
+has induced population target \(m_W(z;x^\star)\). Moreover, its bias relative to the
 context-specific mean \(m_{c^\star}(z)\) decomposes as
 \[
 \mathbb{E}\big[\hat m(x^\star)\big]-m_{c^\star}(z)
