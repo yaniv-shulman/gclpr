@@ -500,6 +500,7 @@ This consistency statement is for the induced context-smoothed target \(m_W(z;x^
 
 \section{Applications and Experiments}
 \label{s:Experiments}
+All empirical results use the public Python implementation in the \texttt{rsklpr} package \citep{shulman2026rsklpr}, using the version 2.x series. This implementation employs adaptive \(k\)-nearest-neighbor neighborhoods rather than a fixed bandwidth matrix \(H\), so the experiments instantiate an adaptive-bandwidth analogue of the estimator, while the theory above is stated for fixed bandwidths.
 \subsection{Experiment 1: Geospatial Context on California Housing}
 
 As a foundational validation of the proposed framework, we test the hypothesis that explicit context kernels improve performance even when contextual variables (coordinates) are already present in the primary feature set. We evaluate GC-LPR against standard LPR, its robust variant RSKLPR \citep{shulman2025robust}, and common baselines including K-Nearest Neighbors (KNN), Global Polynomial Ridge, and Global Linear regression.
