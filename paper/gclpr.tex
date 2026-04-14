@@ -123,7 +123,7 @@ See \citep{fan1993local,fan1996local,loader1999local} for details. Product and r
 
 \subsection{Robust Local Polynomial Regression with Similarity Kernels}
 \label{s:background_rsklpr}
-Robust Local Polynomial Regression with Similarity Kernels (RSKLPR) \citep{shulman2025robust} augments LPR with a similarity kernel on the full data space to achieve robustness. Writing its empirical loss at $(z,y)$ as
+Robust Local Polynomial Regression with Similarity Kernels (RSKLPR) \citep{shulman2025robust} augments LPR with a similarity kernel on the full data space to achieve robustness, in the spirit of classical robust local regression and local polynomial M-estimation \citep{cleveland1979robust,jiang2001robust}. Writing its empirical loss at $(z,y)$ as
 \begin{equation}
 \label{eq:rsk_loss}
 \Lcal_{rsk}(z,y;\D_n,\Hcal)
@@ -264,7 +264,7 @@ Geographically Weighted Regression (GWR) \citep{brunsdon1996geographically, foth
 GC-LPR can be viewed as a generalization of GWR where "location" is defined not just by spatial coordinates, but by an abstract context $C$. While GWR relies on Euclidean spatial distance, GC-LPR admits abstract distances defined on graphs, networks, or latent manifolds. Our framework effectively treats the context $C$ as the index variable $U$ in a VCM, estimating $\beta(Z, C)$ where the dependence on $C$ is handled non-parametrically via the context kernel.
 
 \subsection{Graph Signal Processing and Manifold Regularization}
-When data resides on irregular domains, standard Euclidean kernels fail. The field of Graph Signal Processing (GSP) addresses this by defining smoothness via the graph Laplacian \citep{shuman2013emerging}. Diffusion kernels (or heat kernels) $K_t = e^{-t\mathcal{L}}$ generalize Gaussian smoothing to manifolds and graphs, capturing the intrinsic geometry of the data domain \citep{belkin2003laplacian, coifman2006diffusion}.
+When data resides on irregular domains, standard Euclidean kernels fail. The field of Graph Signal Processing (GSP) addresses this by defining smoothness via the graph Laplacian \citep{shuman2013emerging}. Diffusion kernels (or heat kernels) $K_t = e^{-t\mathcal{L}}$ generalize Gaussian smoothing to manifolds and graphs, capturing the intrinsic geometry of the data domain \citep{kondor2002diffusion, belkin2003laplacian, coifman2006diffusion}.
 
 Work by \citet{bickel2007local} extended local polynomial regression to unknown manifolds, proving that LPR can adapt to the intrinsic dimension of the data. GC-LPR bridges the gap between these spectral methods and classical smoothing. By incorporating graph-based kernels (e.g., diffusion or shortest-path) as multiplicative factors in $K_c$, we explicitly enforce that the local polynomial fit respects the topology of the underlying domain. This allows us to estimate the context-dependent mean $m(Z, C)$ even when $C$ represents a complex manifold structure that is not isometric to Euclidean space.
 
@@ -563,7 +563,7 @@ Hyperparameter optimization revealed a consistent discrepancy in optimal neighbo
 The purpose of the second experiment is to demonstrate the use of a more advanced geospatial kernel that takes similar inputs as in Experiment 1 (i.e., \texttt{Latitude} and \texttt{Longitude}), but employs a non-Euclidean kernel on a graph. The goal is to show that standard distance metrics (Euclidean or Haversine) are often insufficient, and that a context-aware model can capture a more meaningful, network-based definition of proximity.
 
 \paragraph{\textbf{Dataset and Setup}}
-We use an NYC Airbnb dataset \citep{zillow_data_2019} to predict listing \texttt{price}. The features include standard tabular attributes (\texttt{host\_listings\_count}, \texttt{room\_type}, etc.) as well as \texttt{Latitude} and \texttt{Longitude}. We compare our GRC-LPR model against a standard LPR and other common baselines: Global Linear, Global Polynomial, and K-Nearest Neighbors. All models were tuned by 5-fold cross-validation. 
+We use an NYC Airbnb dataset from Inside Airbnb \citep{insideairbnb2026nyc} to predict listing \texttt{price}. The features include standard tabular attributes (\texttt{host\_listings\_count}, \texttt{room\_type}, etc.) as well as \texttt{Latitude} and \texttt{Longitude}. We compare our GRC-LPR model against a standard LPR and other common baselines: Global Linear, Global Polynomial, and K-Nearest Neighbors. All models were tuned by 5-fold cross-validation. 
 The primary comparison is between:
 
 \begin{itemize}
@@ -644,6 +644,7 @@ We construct a graph $G = (\mathcal{V}, \mathcal{E})$ representing the US domest
         \tilde{Y}^{(k+1)} &= \alpha \tilde{Y}^{(k)} + (1-\alpha) A \tilde{Y}^{(k)} \quad \text{for } k=0,\dots,6,
     \end{align*}
     where $A$ is the normalized adjacency matrix with the traffic volume as the raw edge weights, $\xi_i$ is noise, and the final target is $Y := \tilde{Y}^{(7)}$.
+    For clarity, the synthetic propagation uses this traffic-weighted normalized adjacency, whereas the GC/GRC-LPR context kernel itself is built on the underlying undirected airport graph via a symmetric shortest-path similarity.
 \end{itemize}
 
 This process creates a scenario where two airports with similar feature vectors $Z$ (e.g., two medium-sized hubs) may have vastly different $Y$ values if they lie in different diffusion clusters. Standard LPR with a kernel only in $Z$ cannot distinguish them; GC-LPR with graph context can. Figure~\ref{fig:airport_setup} illustrates the underlying network topology and the synthetic delay function used as the prediction target.
