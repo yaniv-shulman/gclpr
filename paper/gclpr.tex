@@ -67,20 +67,20 @@ This is a draft version of work in progress, content will be revisited in subseq
 \date{\today}
 
 \begin{abstract}
-Local Polynomial Regression (LPR) is a powerful tool for nonparametric smoothing, yet it traditionally suffers from a "Euclidean tautology": the variables used to define the local neighborhood are identical to those used in the polynomial fit. This restricts its ability to handle complex domains where the regression function varies across non-Euclidean structures, such as graphs, manifolds, or discrete categories, while remaining locally smooth in the primary feature space. We propose \emph{Generalized Context-Aware LPR} (GC-LPR), a framework that decouples the fitting coordinates ($Z$) from the weighting context ($C$). By adopting a modeling convention where the conditional mean depends jointly on $Z$ and $C$ ($Y = m(Z, C) + \varepsilon$), our estimator acts as a "projected smoother": it isolates a slice of the data on the manifold defined by $C$ via a compound product kernel, and performs polynomial fitting in the $Z$-coordinates within that slice. This enables practitioners to model responses that vary across graphs, networks, or categorical strata while retaining the interpretability and bias properties of LPR in a primary Euclidean feature space. Theoretical analysis shows that, under standard regularity conditions, GC-LPR preserves the bias-reduction properties of standard LPR w.r.t the Euclidean features around the induced context-smoothed target, while allowing arbitrary, non-Euclidean contexts to modulate the local estimation. We demonstrate the efficacy of this approach on geospatial and network-structured datasets.
+Local Polynomial Regression (LPR) is a powerful tool for nonparametric smoothing, yet it traditionally suffers from a "Euclidean tautology": the variables used to define the local neighborhood are identical to those used in the polynomial fit. This restricts its ability to handle complex domains where the regression function varies across non-Euclidean structures, such as graphs, manifolds, or discrete categories, while remaining locally smooth in the primary feature space. We propose \emph{Generalized Context-Aware LPR} (GC-LPR), a framework that decouples the fitting coordinates ($Z$) from the weighting context ($C$). By adopting a modeling convention where the conditional mean depends jointly on $Z$ and $C$ ($Y = m_C(Z) + \varepsilon$), our estimator acts as a "projected smoother": it isolates a slice of the data on the manifold defined by $C$ via a compound product kernel, and performs polynomial fitting in the $Z$-coordinates within that slice. This enables practitioners to model responses that vary across graphs, networks, or categorical strata while retaining the interpretability and bias properties of LPR in a primary Euclidean feature space. Theoretical analysis shows that, under standard regularity conditions, GC-LPR preserves the bias-reduction properties of standard LPR w.r.t the Euclidean features around the induced context-smoothed target, while allowing arbitrary, non-Euclidean contexts to modulate the local estimation. We demonstrate the efficacy of this approach on geospatial and network-structured datasets.
 \end{abstract}
 \end{frontmatter}
 
 \section{Introduction}
 \label{s:Introduction}
 
-Local Polynomial Regression (LPR) is a cornerstone of nonparametric smoothing, prized for its ability to adapt locally without committing to a rigid global functional form. Its theoretical virtues are well-established: minimax efficiency, automatic boundary-bias correction, and design adaptation \citep{fan1996local, loader1999local}. However, classical LPR suffers from a restrictive "Euclidean tautology": the variables used to define the local neighborhood are identical to those used in the polynomial fit.
+Local Polynomial Regression (LPR) is a cornerstone of nonparametric smoothing, prized for its ability to adapt locally without committing to a rigid global functional form. Its theoretical virtues are well-established, especially for local linear and higher-order variants: the local linear estimator is design-adaptive and automatically corrects first-order boundary bias, while the broader local-polynomial family attains the usual minimax-optimal rates under standard smoothness conditions \citep{fan1996local, loader1999local}. However, classical LPR suffers from a restrictive "Euclidean tautology": the variables used to define the local neighborhood are identical to those used in the polynomial fit.
 
 This constraint is increasingly inadequate in modern domains where the notion of proximity is multi-faceted. Observations may be ``near'' geographically, connected via a transport network, or similar in terms of categorical attributes, even if they are distant in the feature space of interest. Furthermore, relying on a monolithic kernel over all available features exacerbates the ``curse of dimensionality'' \citep{stone1982optimal}, degrading performance as the dimension of the predictor space grows. Generalized product kernels have been successfully applied to mixed-data regression \citep{li2004nonparametric}, and GWR variants have already explored non-Euclidean notions of locality by replacing Euclidean distance with road-network distance, travel time, metro-network distance, or network-derived weighting schemes \citep{lu2011non_euclidean_gwr,lu2014non_euclidean_gwr,gao2022network_distance_gwr,he2023network_weight_gwr}. 
 
 Our contribution is therefore more specific. We introduce \emph{Generalized Context-Aware LPR} (GC-LPR), a decomposed local-polynomial framework in which the polynomial fit is performed in primary Euclidean coordinates $Z$, while one or more auxiliary contexts $C_1,\ldots,C_J$ enter through a compound product kernel $K_c$ (formal definition in Section~\ref{s:Generalized Context-Aware LPR}). The Euclidean factor governs local polynomial fitting in $Z$, and the context factors restrict the neighborhood using domain-appropriate similarity notions, ranging from discrete labels to nodes on a graph. This yields an induced context-smoothed target $m_W$ and a bias-variance interpretation that separates polynomial approximation in $Z$ from smoothing across $C$.
 
-Conceptually, we do not treat context as affecting only the variance. Instead, we model the regression function itself as context-dependent, writing $m(Z,C)$. The context kernels then isolate a relevant slice of the data defined by $C$, within which the local polynomial fit is carried out in $Z$. This allows the relationship between $Z$ and $Y$ to change across the context space, whether smoothly or through structural discontinuities such as network or geographic boundaries. In this sense, GC-LPR is distinct from global graph-regularization methods such as Graph Signal Processing (GSP) \citep{shuman2013emerging}.
+Conceptually, we do not treat context as affecting only the variance. Instead, we model the regression function itself as context-dependent, writing $m_C(Z)$. The context kernels then isolate a relevant slice of the data defined by $C$, within which the local polynomial fit is carried out in $Z$. This allows the relationship between $Z$ and $Y$ to change across the context space, whether smoothly or through structural discontinuities such as network or geographic boundaries. In this sense, GC-LPR is distinct from global graph-regularization methods such as Graph Signal Processing (GSP) \citep{shuman2013emerging}.
 
 We further demonstrate the composability of this framework by integrating a response-based robustness factor $K_r$, following recent work by \citet{shulman2025robust}, to handle outliers without distorting the definition of locality. The remainder of this paper reviews the relevant literature, formalizes the estimator, analyzes its asymptotic properties, and validates its performance on geospatial and network-structured datasets.
 
@@ -193,6 +193,15 @@ With these components, the GC-LPR estimator $\hat\beta(x)$ minimizes the context
 \Lcal_{\text{gc-lpr}}(x)
 =\sum_{i=1}^{n}\Big(Y_i-r_p(\psi_0(X_i)-\psi_0(x))^\top\beta(x)\Big)^2\,K_c(x,X_i;\Hcal_c).
 \end{equation}
+Equivalently, writing \(z=\psi_0(x)\) and \(Z_i=\psi_0(X_i)\), define the empirical local Gram matrix
+\[
+G_n(x)\coloneqq \sum_{i=1}^{n} K_c(x,X_i;\Hcal_c)\, r_p(Z_i-z)\,r_p(Z_i-z)^\top.
+\]
+When \(G_n(x)\) is nonsingular, the minimizer is unique and satisfies
+\[
+\hat\beta(x)=G_n(x)^{-1}\sum_{i=1}^{n} K_c(x,X_i;\Hcal_c)\, r_p(Z_i-z)\,Y_i.
+\]
+In computation one may replace \(G_n(x)^{-1}\) by a Moore--Penrose inverse if needed; for the pointwise asymptotic results below, we assume \(G_n(x^\star)\) is nonsingular with probability tending to one.
 Crucially, the polynomial basis $r_p(\cdot)$ operates only on $Z_i=\psi_0(X_i)$, whereas the weight factorizes as
 \[
 K_c(x,X_i;\Hcal_c)=K_{0,H}(Z_i-z)\,W(x,X_i),
@@ -264,7 +273,7 @@ GC-LPR is related to VCM and GWR, but it is not a direct re-labeling of the cont
 \subsection{Graph Signal Processing and Manifold Regularization}
 When data resides on irregular domains, Graph Signal Processing (GSP) and manifold regularization address smoothness via operators such as the graph Laplacian \citep{shuman2013emerging}. Diffusion kernels (or heat kernels) $K_t = e^{-t\mathcal{L}}$ generalize Gaussian smoothing to manifolds and graphs, capturing the intrinsic geometry of the data domain \citep{kondor2002diffusion, belkin2003laplacian, coifman2006diffusion}. These methods are conceptually distinct from local regression: they are typically global graph-smoothing or spectral procedures rather than weighted local polynomial fits.
 
-Work by \citet{bickel2007local} extended local polynomial regression to unknown manifolds, proving that LPR can adapt to the intrinsic dimension of the data. GC-LPR is complementary to these spectral methods. By incorporating graph-based kernels (e.g., diffusion or shortest-path) as multiplicative factors in $K_c$, we combine local-polynomial fitting in $Z$ with graph-informed context weighting. This allows us to estimate the context-dependent mean $m(Z, C)$ even when $C$ represents a complex manifold structure that is not isometric to Euclidean space.
+Work by \citet{bickel2007local} extended local polynomial regression to unknown manifolds, proving that LPR can adapt to the intrinsic dimension of the data. GC-LPR is complementary to these spectral methods. By incorporating graph-based kernels (e.g., diffusion or shortest-path) as multiplicative factors in $K_c$, we combine local-polynomial fitting in $Z$ with graph-informed context weighting. This allows us to estimate the context-dependent mean $m_C(Z)$ even when $C$ represents a complex manifold structure that is not isometric to Euclidean space.
 
 In summary, GC-LPR can be viewed as a decomposed local-polynomial framework related to mixed-data smoothing, GWR, and graph-based learning, but distinct in its separation of fitting coordinates from multiple auxiliary contexts and in its target-level interpretation via $m_W$.
 
@@ -330,7 +339,7 @@ the induced population target is the context-smoothed mean \(m_W(z;x^\star)\); t
 Let \(Z=\psi_0(X)\in\mathbb{R}^d\) admit a density \(f_Z\) that is continuous in a neighborhood of \(z\),
 with \(f_Z(z)>0\). Assume the regression model
 \[
-Y=m(Z,C)+\varepsilon,\qquad \mathbb{E}[\varepsilon\mid Z,C]=0,\qquad \Var(\varepsilon\mid Z,C)=\sigma^2(Z,C).
+Y=m_C(Z)+\varepsilon,\qquad \mathbb{E}[\varepsilon\mid Z,C]=0,\qquad \Var(\varepsilon\mid Z,C)=\sigma^2(Z,C).
 \]
 Fix \(x^\star\), and assume the context-smoothed mean \(m_W(\cdot;x^\star)\in C^{p+1}\) in a neighborhood of \(z\).
 In particular, if the context kernels induce no leakage away from \(c^\star\) so that \(m_W(\cdot;x^\star)=m_{c^\star}(\cdot)\)
@@ -459,10 +468,10 @@ where \(M_0\) and \(\Omega_0\) are the standard moment matrices for \(K_0\), and
 \Phi(x)=\frac{\mathbb{E}\big[\,W(x,X)^2\,\big(Y-m_W(Z;x)\big)^2\mid Z=z\,\big]}
 {\mathbb{E}\big[\,W(x,X)\mid Z=z\,\big]^2}
 \]
-is the effective residual factor. Under the model \(Y=m(Z,C)+\varepsilon\) with \(\mathbb{E}[\varepsilon\mid Z,C]=0\),
+is the effective residual factor. Under the model \(Y=m_C(Z)+\varepsilon\) with \(\mathbb{E}[\varepsilon\mid Z,C]=0\),
 \[
 \Phi(x)=
-\frac{\mathbb{E}\big[\,W(x,X)^2\big\{\sigma^2(Z,C)+\big(m(Z,C)-m_W(Z;x)\big)^2\big\}\mid Z=z\,\big]}
+\frac{\mathbb{E}\big[\,W(x,X)^2\big\{\sigma^2(Z,C)+\big(m_C(Z)-m_W(Z;x)\big)^2\big\}\mid Z=z\,\big]}
 {\mathbb{E}\big[\,W(x,X)\mid Z=z\,\big]^2}.
 \]
 \end{proposition}
@@ -471,7 +480,7 @@ Proof in~\ref{app:proof_variance}. The effective residual factor \(\Phi(x)\) qua
 \begin{itemize}
     \item \textbf{Recovery of standard LPR:} If \(W\equiv 1\) (no context weights) and errors are
     homoskedastic and the model reduces to \(Y=m(Z)+\varepsilon\), then \(\Phi(x)=\sigma^2\), recovering the standard LPR variance expression.
-    \item \textbf{Context-mixing variation:} Even when \(\sigma^2(Z,C)=0\), \(\Phi(x)\) can remain positive if multiple contexts contribute nontrivially to the target \(m_W(\cdot;x)\) at a given \(Z=z\), through the term \(\big(m(Z,C)-m_W(Z;x)\big)^2\).
+    \item \textbf{Context-mixing variation:} Even when \(\sigma^2(Z,C)=0\), \(\Phi(x)\) can remain positive if multiple contexts contribute nontrivially to the target \(m_W(\cdot;x)\) at a given \(Z=z\), through the term \(\big(m_C(Z)-m_W(Z;x)\big)^2\).
     \item \textbf{Weight-induced inflation:} When context weights are sparse or highly variable (e.g., focusing on a small manifold slice), the squared-weight numerator relative to \(\mathbb{E}[W\mid Z=z]^2\) can inflate variance, especially when the effective residual variation is roughly homogeneous or only weakly related to the weights. This reflects the reduction in effective sample size caused by the context filter. GC-LPR therefore does not eliminate the curse of dimensionality; rather, it trades model bias against variance. While the method allows for complex dependencies, a low-variance estimate still requires a sufficiently dense sample in the joint $(Z,C)$ space.
 \end{itemize}
 
@@ -631,7 +640,7 @@ Global Linear & \$3171.05 & 0.5452 \\ \bottomrule
 \subsection{Experiment 3: Regression on a Node Function Defined over a Graph}
 \label{s:exp_airport}
 
-This experiment serves as the primary validation of our theoretical framework. While the previous experiments relied on real-world data where the true data generating process is unknown, here we explicitly simulate a target function $Y = m(Z, C)$ defined on the nodes of a graph. This allows us to test the specific hypothesis that \emph{structural locality} (who you are connected to) is distinct from \emph{feature similarity} (how connected you are), and that omitting the former leads to bias.
+This experiment serves as the primary validation of our theoretical framework. While the previous experiments relied on real-world data where the true data generating process is unknown, here we explicitly simulate a target function $Y = m_C(Z)$ defined on the nodes of a graph. This allows us to test the specific hypothesis that \emph{structural locality} (who you are connected to) is distinct from \emph{feature similarity} (how connected you are), and that omitting the former leads to bias.
 
 \paragraph{\textbf{Dataset and Setup}}
 We construct a graph $G = (\mathcal{V}, \mathcal{E})$ representing the US domestic flight network, where nodes are airports and edges represent direct routes.
@@ -710,7 +719,7 @@ Global Linear & 0.7664 & 0.2260 & 0.2944 \\ \bottomrule
 \end{tabular}
 \end{table}
 
-Standard LPR hits a performance ceiling (R² = 0.9048) despite using a large neighborhood (123 neighbors), as it smooths over airports that look similar in $Z$ but are topologically distant. GRC-LPR (R² = \textbf{0.9256}) breaks this ceiling. By multiplying the feature kernel with the graph kernel, it localizes the regression to the specific branch of the network where the propagation occurred, showing that explicit context kernels are useful for recovering this graph-structured $m(Z, C)$ within the local polynomial family.
+Standard LPR hits a performance ceiling (R² = 0.9048) despite using a large neighborhood (123 neighbors), as it smooths over airports that look similar in $Z$ but are topologically distant. GRC-LPR (R² = \textbf{0.9256}) breaks this ceiling. By multiplying the feature kernel with the graph kernel, it localizes the regression to the specific branch of the network where the propagation occurred, showing that explicit context kernels are useful for recovering this graph-structured $m_C(Z)$ within the local polynomial family.
 
 
 \section{Conclusion}
@@ -718,7 +727,7 @@ Standard LPR hits a performance ceiling (R² = 0.9048) despite using a large nei
 
 This work presented Generalized Context-Aware Local Polynomial Regression (GC-LPR), a framework that resolves a fundamental rigidity in classical nonparametric smoothing: the requirement that the variables used to define the local neighborhood must be identical to those used in the polynomial fit. By decomposing the predictor space into a Euclidean fitting chart $\psi_0$ with coordinates $Z=\psi_0(X)$ and a context space ($C$), and bridging them via a compound product kernel, we have established a method that is both mathematically rigorous and practically flexible.
 
-Our theoretical analysis re-frames the role of "context" not merely as a variance modifier, but as a fundamental component of the generative process $Y = m(Z, C)$. Under this view, GC-LPR acts as a projected smoother: the context kernels (whether discrete, geospatial, or graph-based) isolate a specific slice of the data manifold, effectively "masking" irrelevant observations before the local polynomial estimation takes place in $Z$. This interpretation justifies the use of kernels that are discontinuous with respect to Euclidean distance, such as those defined on road networks or administrative partitions.
+Our theoretical analysis re-frames the role of "context" not merely as a variance modifier, but as a fundamental component of the generative process $Y = m_C(Z)$. Under this view, GC-LPR acts as a projected smoother: the context kernels (whether discrete, geospatial, or graph-based) isolate a specific slice of the data manifold, effectively "masking" irrelevant observations before the local polynomial estimation takes place in $Z$. This interpretation justifies the use of kernels that are discontinuous with respect to Euclidean distance, such as those defined on road networks or administrative partitions.
 
 Empirically, we demonstrated that this decoupling yields significant performance gains. In the California Housing experiment, we showed that explicit geospatial kernels improve accuracy even when coordinates are already included as features. In the US Airport Network experiment, we demonstrated that topological contexts (flight paths) capture dependencies that standard Euclidean metrics strictly miss.
 
@@ -895,15 +904,15 @@ S_n \to \phi_1(x)\,f_Z(z)\,M_0,
 \Var(\hat{\vartheta}(x)) &\approx \frac{1}{n|H|} \frac{f_Z(z)\,\E[W(x,X)^2\,\xi_x^2 \mid Z=z]}{(\phi_1(x) f_Z(z))^2} M_0^{-1} \Omega_0 M_0^{-1} \\
 &= \frac{1}{n|H| f_Z(z)} \left( M_0^{-1} \Omega_0 M_0^{-1} \right) \times \underbrace{\frac{\E[W(x,X)^2\,\big(Y-m_W(Z;x)\big)^2 \mid Z=z]}{(\E[W(x,X) \mid Z=z])^2}}_{\Phi(x)}.
 \end{align*}
-Under the model \(Y=m(Z,C)+\varepsilon\),
+Under the model \(Y=m_C(Z)+\varepsilon\),
 \[
-\xi_x = \big(m(Z,C)-m_W(Z;x)\big)+\varepsilon,
+\xi_x = \big(m_C(Z)-m_W(Z;x)\big)+\varepsilon,
 \]
 so
 \[
 \mathbb{E}\!\left[W(x,X)^2\,\xi_x^2\mid Z=z\right]
 =
-\mathbb{E}\!\left[W(x,X)^2\big\{\sigma^2(Z,C)+\big(m(Z,C)-m_W(Z;x)\big)^2\big\}\mid Z=z\right],
+\mathbb{E}\!\left[W(x,X)^2\big\{\sigma^2(Z,C)+\big(m_C(Z)-m_W(Z;x)\big)^2\big\}\mid Z=z\right],
 \]
 because the cross term vanishes after conditioning on \((Z,C)\) and using \(\mathbb{E}[\varepsilon\mid Z,C]=0\). This gives the stated form of \(\Phi(x)\).
 
