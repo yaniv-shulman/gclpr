@@ -415,8 +415,8 @@ does not depend on \(\beta\), and the remaining term reduces by iterated expecta
 
 \begin{proposition}[Bias decomposition and rate]
 \label{prop:bias}
-Under Assumptions \ref{ass:data}--\ref{ass:positivity}, the GC-LPR intercept estimator
-\(\hat m(x)\coloneqq e_1^\top \hat\beta(x)\), where \(e_1=(1,0,\dots,0)\) selects the intercept term,
+Under Assumptions \ref{ass:data}--\ref{ass:positivity}, fix \(x^\star=(z,c^\star)\). The GC-LPR intercept estimator
+\(\hat m(x^\star)\coloneqq e_1^\top \hat\beta(x^\star)\), where \(e_1=(1,0,\dots,0)\) selects the intercept term,
 has induced population target \(m_W(z;x^\star)\). Moreover, its bias relative to the
 context-specific mean \(m_{c^\star}(z)\) decomposes as
 \[
@@ -494,11 +494,11 @@ Consequently, if \(\|H\|\to0\) and \(n|H|\to\infty\), then
 Proposition~\ref{prop:bias} gives \(\mathbb{E}[\hat m(x^\star)]-m_W(z;x^\star)=O(\|H\|^{p+1})\), while Proposition~\ref{prop:variance} and Assumptions~\ref{ass:positivity}--\ref{ass:variance_moment} give \(\Var\{\hat m(x^\star)\}=O((n|H|)^{-1})\); combine these with \(\mathbb{E}[(\hat m-m_W)^2]=\Var(\hat m)+(\mathbb{E}[\hat m]-m_W)^2\).
 \end{proof}
 
-This consistency statement is for the induced context-smoothed target \(m_W(z;x^\star)\). Consistency for the context-specific mean \(m_{c^\star}(z)\) requires additional assumptions on shrinking context bandwidths and regularity across contexts.
+Taken together, the results above give a pointwise-in-\(x^\star\) asymptotic theory for the bandwidth-matrix formulation of GC-LPR around the induced target \(m_W(z;x^\star)\). Under \(\|H\|\to0\) and \(n|H|\to\infty\), Corollary~\ref{cor:mw_consistency} yields consistency for \(m_W(z;x^\star)\), but not, by itself, for the context-specific mean \(m_{c^\star}(z)\); the latter would require shrinking context bandwidths and regularity across contexts. The theory also does not cover the adaptive \(k\)-nearest-neighbor implementation used in the experiments below, nor the additional response-based robustness factor used in GRC-LPR. Extending the analysis to those settings is left for future work.
 
 \section{Applications and Experiments}
 \label{s:Experiments}
-All empirical results use the public Python implementation in the \texttt{rsklpr} package \citep{shulman2026rsklpr}, using the version 2.x series. This implementation employs adaptive \(k\)-nearest-neighbor neighborhoods rather than a fixed bandwidth matrix \(H\), so the experiments instantiate an adaptive-bandwidth analogue of the estimator, while the theory above is stated for fixed bandwidths.
+All empirical results use the public Python implementation in the \texttt{rsklpr} package \citep{shulman2026rsklpr}, using the version 2.0 series.
 The empirical goal here is to compare GC/GRC-LPR against feature-only local polynomial smoothers and simple generic baselines, rather than to claim a benchmark against all task-specific spatial or graph regression model classes.
 \subsection{Experiment 1: Geospatial Context on California Housing}
 
@@ -556,7 +556,7 @@ To investigate the qualitative impact of context-awareness, we mapped the absolu
 \end{figure}
 
 \paragraph{\textbf{Effective Neighborhood Analysis}}
-Hyperparameter optimization revealed a consistent discrepancy in optimal neighborhood sizes ($k$). Cross-validation selected neighborhoods for GC-LPR that were approximately three-fold larger than those for standard LPR. This empirical result aligns with our theoretical framework: by employing a context kernel to ``soft-filter'' geographically distant observations, the estimator effectively expands the pool of relevant local data. This increased effective sample size stabilizes the polynomial fit and reduces variance, while the context-aware weighting prevents the smoothing bias typically associated with large Euclidean neighborhoods in non-stationary spatial domains.
+Hyperparameter optimization revealed a consistent discrepancy in optimal neighborhood sizes ($k$). In the 10-fold cross-validation reported here, standard LPR selected neighborhoods between 37 and 67 neighbors across folds (median 47), whereas GC-LPR selected neighborhoods between 97 and 147 neighbors (median 147). This empirical result aligns with our theoretical framework: by employing a context kernel to ``soft-filter'' geographically distant observations, the estimator effectively expands the pool of relevant local data. This increased effective sample size stabilizes the polynomial fit and reduces variance, while the context-aware weighting prevents the smoothing bias typically associated with large Euclidean neighborhoods in non-stationary spatial domains.
 
 \subsection{Experiment 2: Fusing Tabular, Geospatial, and Network Context in NYC}
 The purpose of the second experiment is to demonstrate the use of a more advanced geospatial kernel that takes similar inputs as in Experiment 1 (i.e., \texttt{Latitude} and \texttt{Longitude}), but employs a non-Euclidean kernel on a graph. The goal is to show that standard distance metrics (Euclidean or Haversine) are often insufficient, and that a context-aware model can capture a more meaningful, network-based definition of proximity.
