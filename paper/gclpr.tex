@@ -511,67 +511,71 @@ All empirical results use the public Python implementation in the \texttt{rsklpr
 The empirical goal here is to compare GC/GRC-LPR against feature-only local polynomial smoothers and simple generic baselines, rather than to claim a benchmark against all task-specific spatial or graph regression model classes.
 \subsection{Experiment 1: Geospatial Context on California Housing}
 
-As a foundational validation of the proposed framework, we test the hypothesis that explicit context kernels improve performance even when contextual variables (coordinates) are already present in the primary feature set. This is intended as a within-family comparison against feature-only local smoothers rather than a full ablation of every geographic representation choice. We evaluate GC-LPR against standard LPR, its robust variant RSKLPR \citep{shulman2025robust}, and common baselines including K-Nearest Neighbors (KNN), Global Polynomial Ridge, and Global Linear regression.
+As a foundational validation of the proposed framework, we test the hypothesis that explicit context kernels improve performance even when contextual variables (coordinates) are already present in the primary feature set. This is intended as a within-family comparison against feature-only local smoothers rather than a full ablation of every geographic representation choice. We evaluate GC-LPR against standard LPR, its robust variant RSKLPR \citep{shulman2025robust}, and a K-Nearest Neighbors (KNN) baseline.
 
 \paragraph{\textbf{Dataset and Setup}}
-We utilize the California Housing dataset \citep{pace1997sparse}, modeling the median house value (\texttt{MedHouseVal}) using a feature vector $Z$ containing \texttt{MedInc}, \texttt{AveRooms}, \texttt{Latitude}, and \texttt{Longitude}. Non-geospatial features were standardized. To ensure statistical rigor, we performed 10-fold cross-validation (CV), reporting the mean and standard deviation for all metrics.
+We utilize the California Housing dataset \citep{pace1997sparse}, modeling the median house value (\texttt{MedHouseVal}) using a feature vector $Z$ containing \texttt{MedInc}, \texttt{AveRooms}, \texttt{Latitude}, and \texttt{Longitude}. Non-geospatial features were standardized. We report a 5-fold outer evaluation, with mean and standard deviation over the held-out folds.
 
-All models were tuned via nested cross-validation within each fold. The hyperparameter search space for local polynomial models included neighborhood size ($k \in [7, 151]$), polynomial degree ($p \in \{0, 1\}$), and kernel types Laplacian and Tricube. For GC-LPR and GRC-LPR, the search also optimized the length-scale of the Haversine context kernel. The primary comparison is between:
+To control runtime while still reporting fold-wise uncertainty, we use a pilot-tune-then-refit protocol: hyperparameters are selected once on a pilot subset by 3-fold cross-validation and then held fixed while the models are refit and evaluated on each outer fold. The hyperparameter search space for local polynomial models included neighborhood size ($k \in [7,151]$), polynomial degree ($p \in \{0,1\}$), Laplacian and Tricube predictor kernels, and Minkowski or Mahalanobis distances. For GC-LPR and GRC-LPR, the search also optimized the length-scale of the Haversine context kernel. Additional evaluation details are collected in~\ref{app:exp_details}. The primary comparison is between:
 \begin{itemize}
     \item \textbf{LPR / RSKLPR (Standard):} Utilizes a single features kernel over the full feature vector $Z$. 
     \item \textbf{GC-LPR / GRC-LPR (Geospatial):} Employs the compound kernel $K_c = K_{\text{std}}(Z) \cdot K_{\text{geo}}(\text{Lat, Lon})$, where $K_{\text{geo}}$ is a Haversine-based RBF kernel.
 \end{itemize}
 
 \paragraph{\textbf{Results and Statistical Analysis}}
-The results of the 10-fold CV are summarized in Table \ref{tab:results_california_10fold}. GRC-LPR (the robust, context-aware variant) achieved the best performance across all metrics, with a mean RMSE of $0.5245$ and $R^2$ of $0.7932$. The predictions scatter plot is shown in Figure \ref{figure:california_housling_exp_1_scatter_grid}.
+The results are summarized in Table \ref{tab:results_california_10fold}. Both context-aware models outperform the feature-only local smoothers and KNN. GRC-LPR (the robust, context-aware variant) achieves the best mean performance across all three reported metrics, with RMSE $0.5045 \pm 0.0112$, MAE $0.3356 \pm 0.0074$, and $R^2 = 0.8087 \pm 0.0090$. GC-LPR is the second-best model, while standard LPR and RSKLPR remain clearly ahead of KNN. The predictions scatter plot is shown in Figure \ref{figure:california_housling_exp_1_scatter_grid}, and the fold-wise RMSE distributions are shown in Figure \ref{figure:california_exp1_rmse_boxplot}.
 
 \begin{figure}[ht]
 \centering
-\includegraphics[width=1.0\textwidth]{california_housling_exp_1_scatter_grid.png}
-\caption{Comparison of different model predictions for one of the CV test sets for Experiment 1. The y-axis is the predicted value and x-axis is the actual value. The dashed line represents the ideal predictions. GC-LPR shows tighter clustering around the ideal line compared to baselines.}
+{\includegraphics[width=1.0\textwidth]{california_housling_exp_1_scatter_grid.png}}
+\caption{Comparison of model predictions for Experiment 1, aggregating the held-out predictions across the 5 outer folds. The y-axis is the predicted value and x-axis is the actual value. The dashed line represents ideal predictions. The context-aware variants show tighter clustering around the ideal line than the feature-only smoothers.}
 \label{figure:california_housling_exp_1_scatter_grid}
 \end{figure}
 
 
 \begin{table}[h]
 \centering
-\caption{10-fold cross-validation results on the California Housing dataset (Mean $\pm$ SD). The context-aware GRC-LPR variant achieves the highest predictive accuracy.}
+\caption{Experiment 1 results on the California Housing dataset under the pilot-tune-then-refit protocol (5 held-out folds; mean $\pm$ SD). The context-aware GRC-LPR variant achieves the strongest average performance.}
 \label{tab:results_california_10fold}
 \small
 \begin{tabular}{@{}lrrr@{}}
 \toprule
 \textbf{Model} & \textbf{RMSE} & \textbf{MAE} & \textbf{$R^2$} \\ \midrule
-\textbf{GRC-LPR (Geospatial)} & \textbf{0.5245 $\pm$ 0.021} & \textbf{0.3489 $\pm$ 0.014} & \textbf{0.7932 $\pm$ 0.012} \\
-GC-LPR (Geospatial) & 0.5299 $\pm$ 0.022 & 0.3580 $\pm$ 0.017 & 0.7889 $\pm$ 0.013 \\
-KNN & 0.5454 $\pm$ 0.020 & 0.3584 $\pm$ 0.010 & 0.7761 $\pm$ 0.015 \\	
-RSKLPR (Standard) & 0.5550 $\pm$ 0.017 & 0.3727 $\pm$ 0.009 & 0.7684 $\pm$ 0.011 \\
-
-LPR (Standard) & 0.5676 $\pm$ 0.044 & 0.3771 $\pm$ 0.034 & 0.7565 $\pm$ 0.038 \\
-Poly-Ridge & 0.7314 $\pm$ 0.025 & 0.5337 $\pm$ 0.014 & 0.5978 $\pm$ 0.020 \\
-Linear & 0.7436 $\pm$ 0.021 & 0.5480 $\pm$ 0.011 & 0.5844 $\pm$ 0.016 \\ \bottomrule
+\textbf{GRC-LPR (Geospatial)} & \textbf{0.5045 $\pm$ 0.0112} & \textbf{0.3356 $\pm$ 0.0074} & \textbf{0.8087 $\pm$ 0.0090} \\
+GC-LPR (Geospatial) & 0.5152 $\pm$ 0.0115 & 0.3446 $\pm$ 0.0067 & 0.8005 $\pm$ 0.0087 \\
+RSKLPR (Standard) & 0.5318 $\pm$ 0.0091 & 0.3525 $\pm$ 0.0061 & 0.7875 $\pm$ 0.0068 \\
+LPR (Standard) & 0.5332 $\pm$ 0.0091 & 0.3573 $\pm$ 0.0063 & 0.7864 $\pm$ 0.0065 \\
+KNN & 0.5450 $\pm$ 0.0149 & 0.3574 $\pm$ 0.0073 & 0.7767 $\pm$ 0.0135 \\ \bottomrule
 \end{tabular}
 \end{table}
 
-The explicit decoupling of geospatial context leads to a marked improvement over standard LPR (RMSE $0.5299$ vs $0.5676$). Notably, incorporating the response-based robustness factor ($K_r$) in GRC-LPR further reduced error, suggesting that the housing data contains localized outliers or heavy-tailed distributions that the context-aware kernel helps isolate.
+\begin{figure}[ht]
+\centering
+{\includegraphics[width=0.85\textwidth]{california_exp1_main_rmse_boxplot.png}}
+\caption{Fold-wise RMSE distributions for Experiment 1 under the pilot-tune-then-refit protocol. The context-aware variants shift the full RMSE distribution downward, with GRC-LPR achieving the lowest center and the strongest average performance across folds.}
+\label{figure:california_exp1_rmse_boxplot}
+\end{figure}
+
+The explicit decoupling of geospatial context leads to a marked improvement over standard LPR (RMSE $0.5152$ vs $0.5332$). Incorporating the response-based robustness factor ($K_r$) improves the context-aware model further, reducing RMSE from $0.5152$ to $0.5045$ and MAE from $0.3446$ to $0.3356$. In contrast, the robustness factor alone offers only a marginal gain in the feature-only setting (RSKLPR vs.\ LPR).
 
 \paragraph{\textbf{Spatial Error Distribution}}
-To investigate the qualitative impact of context-awareness, we mapped the absolute prediction errors across California (Figure \ref{figure:california_geospatial_errors}). While global models  exhibit systematic biases in the Central Valley and high-density coastal regions, GRC-LPR shows a significantly more uniform error distribution. The context-aware model effectively adapts its local polynomial surface to the unique price-dynamics of the San Francisco Bay Area and Greater Los Angeles, whereas models lacking the context kernel tend to over-smooth across these distinct economic boundaries.
+To investigate the qualitative impact of context-awareness, we mapped the prediction errors across California (Figure \ref{figure:california_geospatial_errors}). The bottom row, corresponding to GC-LPR and GRC-LPR, is visibly more uniform than the feature-only local smoothers in the top row. The context-aware models better adapt to the distinct price dynamics of the San Francisco Bay Area and Greater Los Angeles, whereas the feature-only smoothers still over-smooth across these spatial boundaries.
 
 \begin{figure}[ht]
 \centering
-\includegraphics[trim={0 0 0 3cm},clip, width=1.0\textwidth]{california_housling_exp_1_geospatial_errors.png}
-\caption{Geospatial distribution of absolute errors across California on one of the CV test sets. The GC-LPR (Geospatial) model (bottom right) exhibits lower and more spatially uniform errors compared to global models, particularly in high-variance coastal urban centers.}
+{\includegraphics[width=1.0\textwidth]{california_housling_exp_1_geospatial_errors.png}}
+\caption{Geospatial distribution of prediction errors across California, aggregating the held-out predictions across the 5 outer folds. The top row shows feature-only local smoothers (LPR and RSKLPR), while the bottom row shows the context-aware variants (GC-LPR and GRC-LPR). The context-aware models exhibit lower and more spatially uniform errors, especially in high-variance coastal urban centers.}
 \label{figure:california_geospatial_errors}
 \end{figure}
 
 \paragraph{\textbf{Effective Neighborhood Analysis}}
-Hyperparameter optimization revealed a consistent discrepancy in optimal neighborhood sizes ($k$). In the 10-fold cross-validation reported here, standard LPR selected neighborhoods between 37 and 67 neighbors across folds (median 47), whereas GC-LPR selected neighborhoods between 97 and 147 neighbors (median 147). This empirical result aligns with our theoretical framework: by employing a context kernel to ``soft-filter'' geographically distant observations, the estimator effectively expands the pool of relevant local data. This increased effective sample size stabilizes the polynomial fit and reduces variance, while the context-aware weighting prevents the smoothing bias typically associated with large Euclidean neighborhoods in non-stationary spatial domains.
+The pilot tuning stage selected noticeably larger neighborhoods for the context-aware variants than for the feature-only local smoothers: $k=127$ for GC-LPR and $k=137$ for GRC-LPR, compared with $k=77$ for LPR and $k=37$ for RSKLPR. This is consistent with the intended role of the context kernel: it allows the estimator to borrow strength from a wider Euclidean neighborhood while still down-weighting geographically irrelevant observations. The result is a more stable local fit without the same degree of cross-region smoothing bias.
 
 \subsection{Experiment 2: Fusing Tabular, Geospatial, and Network Context in NYC}
 The purpose of the second experiment is to demonstrate the use of a more advanced geospatial kernel that takes similar inputs as in Experiment 1 (i.e., \texttt{Latitude} and \texttt{Longitude}), but employs a non-Euclidean kernel on a graph. The goal is to show that standard distance metrics (Euclidean or Haversine) are often insufficient, and that a context-aware model can capture a more meaningful, network-based definition of proximity.
 
 \paragraph{\textbf{Dataset and Setup}}
-We use an NYC Airbnb dataset from Inside Airbnb \citep{insideairbnb2026nyc} to predict listing \texttt{price}. The features include standard tabular attributes (\texttt{host\_listings\_count}, \texttt{room\_type}, etc.) as well as \texttt{Latitude} and \texttt{Longitude}. We compare our GRC-LPR model against a standard LPR and other common baselines: Global Linear, Global Polynomial, and K-Nearest Neighbors. The implementation uses a single train/test split, with all hyperparameters selected by 5-fold cross-validation on the training split; Table~\ref{tab:results_nyc} then reports the held-out test-set performance. Additional implementation details are collected in Appendix~\ref{app:exp_details}. 
+We use an NYC Airbnb dataset from Inside Airbnb \citep{insideairbnb2026nyc} to predict listing \texttt{price}. The features include standard tabular attributes (\texttt{host\_listings\_count}, \texttt{room\_type}, etc.) as well as \texttt{Latitude} and \texttt{Longitude}. We compare our GRC-LPR model against a standard LPR and other common baselines: Global Linear, Global Polynomial, and K-Nearest Neighbors. The implementation uses a single train/test split, with all hyperparameters selected by 5-fold cross-validation on the training split; Table~\ref{tab:results_nyc} then reports the held-out test-set performance. Additional implementation details are collected in~\ref{app:exp_details}.
 The primary comparison is between:
 
 \begin{itemize}
@@ -651,7 +655,7 @@ We construct a graph $G = (\mathcal{V}, \mathcal{E})$ representing the US domest
         \tilde{Y}^{(0)}_i &= 0.3\,\widetilde{\mathrm{PR}}_i + 0.5\,\widetilde{\mathrm{BW}}_i + 0.2\,\widetilde{\mathrm{Deg}}_i + 0.1\,\xi_i, \\
         \tilde{Y}^{(k+1)} &= 0.7\,\tilde{Y}^{(0)} + 0.3\,A\tilde{Y}^{(k)} \quad \text{for } k=0,\dots,6,
     \end{align*}
-    where \(A\) is the row-normalized traffic-weighted adjacency matrix and the final target is \(Y := \tilde{Y}^{(7)}\), shifted to remain strictly positive. For clarity, the synthetic propagation uses this traffic-weighted normalized adjacency, whereas the GC/GRC-LPR context kernel itself is built on the underlying undirected airport graph via a symmetric shortest-path similarity. Further implementation details are collected in Appendix~\ref{app:exp_details}.
+    where \(A\) is the row-normalized traffic-weighted adjacency matrix and the final target is \(Y := \tilde{Y}^{(7)}\), shifted to remain strictly positive. For clarity, the synthetic propagation uses this traffic-weighted normalized adjacency, whereas the GC/GRC-LPR context kernel itself is built on the underlying undirected airport graph via a symmetric shortest-path similarity. Further implementation details are collected in~\ref{app:exp_details}.
 \end{itemize}
 
 This process creates a scenario where two airports with similar feature vectors $Z$ (e.g., two medium-sized hubs) may have vastly different $Y$ values if they lie in different diffusion clusters. Standard LPR with a kernel only in $Z$ cannot distinguish them; GC-LPR with graph context can. Figure~\ref{fig:airport_setup} illustrates the underlying network topology and the synthetic delay function used as the prediction target.
@@ -921,8 +925,8 @@ because the cross term vanishes after conditioning on \((Z,C)\) and using \(\mat
 \section{Experimental Implementation Details}
 \label{app:exp_details}
 
-\subsection{Evaluation Protocols for Experiments 2 and 3}
-Experiments 2 and 3 use single hold-out evaluations rather than outer repeated cross-validation. In Experiment 2, the NYC Airbnb data are split once into \(80\%\) training and \(20\%\) test data, and the reported model in Table~\ref{tab:results_nyc} is selected by 5-fold cross-validation on the training split. In Experiment 3, the airport data are split once into \(75\%\) training and \(25\%\) test data, and the reported model in Table~\ref{tab:results_airport} is selected by 10-fold cross-validation on the training split. The open-source release includes the full preprocessing and parameter grids used in these runs.
+\subsection{Evaluation Protocols}
+Experiment 1 uses a pilot-tune-then-refit protocol rather than nested cross-validation. A pilot subset containing \(30\%\) of the California Housing data is drawn once, hyperparameters are selected on that subset by 3-fold cross-validation, and the selected configuration for each model is then held fixed while the models are refit and evaluated across 5 outer folds. Experiments 2 and 3 use single hold-out evaluations rather than outer repeated cross-validation. In Experiment 2, the NYC Airbnb data are split once into \(80\%\) training and \(20\%\) test data, and the reported model in Table~\ref{tab:results_nyc} is selected by 5-fold cross-validation on the training split. In Experiment 3, the airport data are split once into \(75\%\) training and \(25\%\) test data, and the reported model in Table~\ref{tab:results_airport} is selected by 10-fold cross-validation on the training split. The open-source release includes the full preprocessing and parameter grids used in these runs.
 
 \subsection{Synthetic Target Construction in Experiment 3}
 The airport graph is constructed as an undirected graph on direct routes. For the synthetic target, only the PageRank, betweenness, and degree features enter the base signal, after standardization; the latitude and longitude variables are included in the regression features but not in the base-delay formula. The propagation operator uses the traffic-weighted adjacency matrix, row-normalized so each row averages the delays of neighboring airports. The update is iterated for seven steps as displayed in Section~\ref{s:exp_airport}, and the final simulated delay is shifted so that the response remains strictly positive. The graph context kernel used by GRC-LPR is separate from this propagation step: it is computed from weighted shortest-path distance on the same underlying undirected graph, with edge length equal to the inverse route count, so the kernel itself is symmetric.
