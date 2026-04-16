@@ -5,7 +5,7 @@ import copy
 import json
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
-from typing import Any, Callable, Tuple, List, Dict
+from typing import Any, Callable, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -754,12 +754,9 @@ def save_outputs(
 
     df_results: pd.DataFrame = pd.DataFrame(data=fold_records)
     df_results.to_csv(raw_path, index=False)
-    valid_results: pd.DataFrame
-
-    if "Valid" in df_results.columns:
-        valid_results = df_results.loc[df_results["Valid"]].copy()
-    else:
-        valid_results = df_results.copy()
+    valid_results: pd.DataFrame = (
+        df_results.loc[df_results["Valid"]].copy() if "Valid" in df_results.columns else df_results.copy()
+    )
 
     summary: pd.DataFrame = valid_results.groupby("Model")[["RMSE", "MAE", "R2"]].agg(["mean", "std"])
     summary.to_csv(summary_path)

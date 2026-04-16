@@ -10,7 +10,7 @@ This module contains the reusable pieces behind the Experiment 1 runner:
 """
 
 from pathlib import Path
-from typing import Any, Callable, TypeAlias, List, Dict, cast
+from typing import Any, Callable, Dict, List, TypeAlias, cast
 
 import numpy as np
 from matplotlib import pyplot as plt

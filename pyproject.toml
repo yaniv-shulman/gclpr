@@ -73,10 +73,9 @@ indent-width = 4
 target-version = "py312"
 
 [tool.ruff.lint]
-# Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
-# Unlike Flake8, Ruff doesn't enable pycodestyle warnings (`W`) or
-# McCabe complexity (`C901`) by default.
-select = ["E4", "E7", "E9", "F"]
+# Keep Ruff focused on correctness, imports, modernization, and low-noise
+# simplifications. Type checking stays with mypy.
+select = ["E", "F", "W", "I", "SIM"]
 ignore = []
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
@@ -99,10 +98,3 @@ markers = [
 ]
 minversion = "6.0"
 testpaths = ["tests"]
-
-[tool.coverage.run]
-branch = true
-omit = ["tests/*"]
-
-[tool.coverage.report]
-show_missing=true
