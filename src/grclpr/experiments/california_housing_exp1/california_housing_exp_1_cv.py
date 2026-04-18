@@ -71,7 +71,7 @@ class ExperimentConfig:
     protocol: str = "pilot_tune_then_refit"
     search_mode: str = "grid"
     grid_profile: str = "full"
-    scoring: str = "nan_safe_rmse"
+    scoring: str = "strict_rmse"
     outer_folds: int = 5
     inner_folds: int = 3
     pilot_fraction: float = 0.30
@@ -409,7 +409,7 @@ def safe_clone(estimator: BaseEstimator) -> BaseEstimator:
         return copy.deepcopy(estimator)
 
 
-def nan_safe_rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+def strict_rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """
     Compute RMSE, treating any non-finite prediction as an invalid run.
 
@@ -451,10 +451,16 @@ def resolve_scoring(scoring: str) -> Any:
     Returns:
         A scikit-learn compatible scoring object or scoring string.
     """
-    if scoring == "nan_safe_rmse":
-        return make_scorer(nan_safe_rmse, greater_is_better=False)
+    if scoring == "strict_rmse":
+        return make_scorer(strict_rmse, greater_is_better=False)
 
-    return scoring
+    if scoring in {"neg_root_mean_squared_error", "neg_mean_squared_error"}:
+        return scoring
+
+    raise ValueError(
+        "Unsupported scoring value. Expected one of "
+        "{'strict_rmse', 'neg_root_mean_squared_error', 'neg_mean_squared_error'}."
+    )
 
 
 def run_search(
@@ -911,6 +917,7 @@ def normalize_config(config: ExperimentConfig) -> ExperimentConfig:
             output_prefix=f"{config.output_prefix}_smoke",
         )
 
+    resolve_scoring(scoring=config.scoring)
     return config
 
 
@@ -1002,11 +1009,11 @@ def parse_args() -> ExperimentConfig:
     parser.add_argument(
         "--scoring",
         choices=[
-            "nan_safe_rmse",
+            "strict_rmse",
             "neg_root_mean_squared_error",
             "neg_mean_squared_error",
         ],
-        default="nan_safe_rmse",
+        default="strict_rmse",
     )
 
     parser.add_argument("--output-prefix", type=str, default="california_exp1")

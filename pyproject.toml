@@ -1,5 +1,5 @@
 [project]
-name = "grclpr"
+name = "gclpr"
 version = "0.1.0"
 description = ""
 authors = [
@@ -8,17 +8,16 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.12"
 
-dependencies = [
-    "rsklpr (>=2.0.0,<3.0.0)",
-    "matplotlib (>=3.10.7,<4.0.0)",
-    "networkx (>=3.5,<4.0)",
-    "notebook (>=7.4.7,<8.0.0)",
-    "scikit-learn (>=1.7.2,<2.0.0)",
-    "numpy (>=2.3.4,<3.0.0)",
-    "pandas (>=2.3.3,<3.0.0)",
-    "joblib (>=1.5.2,<2.0.0)",
-    "cartopy (>=0.25.0,<0.26.0)"
-]
+[tool.poetry.dependencies]
+rsklpr = "^2.0.0"
+matplotlib = "^3.10.7"
+networkx = "^3.5.0"
+notebook = "^7.4.7"
+scikit-learn = "^1.7.2"
+numpy = "^2.3.4"
+pandas = "^2.3.3"
+joblib = "^1.5.2"
+cartopy = "^0.25.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.0.3"

@@ -125,7 +125,7 @@ def test_build_search_grids_profiles_and_invalid_profile() -> None:
         exp1_cv.build_search_grids("bad")
 
 
-def test_compute_metrics_nan_safe_rmse_and_scoring_resolution() -> None:
+def test_compute_metrics_strict_rmse_and_scoring_resolution() -> None:
     """Metric helpers should reject invalid predictions and build the scorer."""
 
     y_true = np.array([1.0, 2.0, 3.0])
@@ -134,17 +134,22 @@ def test_compute_metrics_nan_safe_rmse_and_scoring_resolution() -> None:
     with pytest.raises(ValueError):
         exp1_cv.compute_metrics(y_true, y_pred)
 
-    assert exp1_cv.nan_safe_rmse(y_true, y_pred) == float("inf")
-    assert exp1_cv.nan_safe_rmse(y_true, np.array([np.nan, np.nan, np.nan])) == float("inf")
-    assert exp1_cv.nan_safe_rmse(y_true, np.array([1.0, 2.0, 4.0])) == pytest.approx(np.sqrt(1.0 / 3.0))
+    assert exp1_cv.strict_rmse(y_true, y_pred) == float("inf")
+    assert exp1_cv.strict_rmse(y_true, np.array([np.nan, np.nan, np.nan])) == float("inf")
+    assert exp1_cv.strict_rmse(y_true, np.array([1.0, 2.0, 4.0])) == pytest.approx(np.sqrt(1.0 / 3.0))
 
     valid, non_finite_fraction = exp1_cv.prediction_validity(y_pred)
     assert valid is False
     assert non_finite_fraction == pytest.approx(1.0 / 3.0)
 
-    scorer = exp1_cv.resolve_scoring("nan_safe_rmse")
-    assert callable(scorer)
+    for scoring in ("strict_rmse",):
+        scorer = exp1_cv.resolve_scoring(scoring)
+        assert callable(scorer)
+
     assert exp1_cv.resolve_scoring("neg_mean_squared_error") == "neg_mean_squared_error"
+
+    with pytest.raises(ValueError):
+        exp1_cv.resolve_scoring("bad_scoring")
 
 
 def test_normalize_config_smoke_mode_overrides_fields() -> None:
@@ -158,6 +163,9 @@ def test_normalize_config_smoke_mode_overrides_fields() -> None:
     assert config.generate_plots is False
     assert config.max_samples == 800
     assert config.output_prefix.endswith("_smoke")
+
+    with pytest.raises(ValueError):
+        exp1_cv.normalize_config(exp1_cv.ExperimentConfig(scoring="bad_scoring"))
 
 
 def test_run_search_dispatches_to_selected_search_function(

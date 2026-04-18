@@ -575,12 +575,13 @@ The pilot tuning stage selected noticeably larger neighborhoods for the context-
 The purpose of the second experiment is to demonstrate the use of a more advanced geospatial kernel that takes similar inputs as in Experiment 1 (i.e., \texttt{Latitude} and \texttt{Longitude}), but employs a non-Euclidean kernel on a graph. The goal is to show that standard distance metrics (Euclidean or Haversine) are often insufficient, and that a context-aware model can capture a more meaningful, network-based definition of proximity.
 
 \paragraph{\textbf{Dataset and Setup}}
-We use an NYC Airbnb dataset from Inside Airbnb \citep{insideairbnb2026nyc} to predict listing \texttt{price}. The features include standard tabular attributes (\texttt{host\_listings\_count}, \texttt{room\_type}, etc.) as well as \texttt{Latitude} and \texttt{Longitude}. We compare our GRC-LPR model against a standard LPR and other common baselines: Global Linear, Global Polynomial, and K-Nearest Neighbors. The implementation uses a single train/test split, with all hyperparameters selected by 5-fold cross-validation on the training split; Table~\ref{tab:results_nyc} then reports the held-out test-set performance. Additional implementation details are collected in~\ref{app:exp_details}.
+We use an NYC Airbnb dataset from Inside Airbnb \citep{insideairbnb2026nyc} to predict listing \texttt{price}. The features include standard tabular attributes (\texttt{host\_listings\_count}, \texttt{room\_type}, etc.) as well as \texttt{Latitude} and \texttt{Longitude}. As in Experiment~1, we use a pilot-tune-then-refit protocol: a pilot subset containing \(30\%\) of the data is drawn once, hyperparameters are selected on that subset by 3-fold cross-validation, and the selected configuration for each model is then held fixed while the models are refit and evaluated across 5 outer folds. The local models are fit on \(\log(1+\texttt{price})\), but tuning and reported metrics are based on raw-price RMSE after inverse transformation. Table~\ref{tab:results_nyc} reports the mean and standard deviation across the outer folds. Additional implementation details are collected in~\ref{app:exp_details}.
 The primary comparison is between:
 
 \begin{itemize}
-    \item \textbf{RSKLPR (Standard):} The baseline robust LPR, which uses a single, monolithic kernel over all standard features, including \texttt{Latitude} and \texttt{Longitude}.
-    \item \textbf{GRC-LPR (Subway):} Our proposed model. This combines a compound predictor kernel with the response-based robustness factor:
+    \item \textbf{KNN:} A distance-weighted \(k\)-nearest-neighbor baseline on the same tabular and geospatial predictors.
+    \item \textbf{LPR / RSKLPR (Standard):} Feature-only local polynomial smoothers using the standard predictors, with RSKLPR adding the response-based robustness factor.
+    \item \textbf{GC-LPR / GRC-LPR (Subway):} Context-aware local smoothers that combine a compound predictor kernel over the standard predictors and the subway network context, with GRC-LPR additionally including the response-based robustness factor:
     $$
     K_c = K_{\text{features}} \times K_{\text{subway}},
     \qquad
@@ -589,32 +590,39 @@ The primary comparison is between:
     \begin{itemize}
         \item $K_{\text{features}}$: A kernel on the standard tabular features.
         \item $K_{\text{subway}}$: A dedicated context kernel. This kernel maps coordinates to the nearest subway station and computes similarity based on the shortest path distance (number of stops) between stations on the subway network graph. This captures topological proximity rather than simple aerial distance. Figure~\ref{figure:subway_kernel_similarity} illustrates the spatial decay of similarity weights on the subway graph, demonstrating how the kernel captures non-Euclidean connectivity relative to a central station.
-        \item $K_r$: The response-based robustness factor from RSKLPR (specifically the conditional density estimator).
+        \item $K_r$: The response-based robustness factor from RSKLPR.
     \end{itemize}
 \end{itemize}
 
 \paragraph{\textbf{Results}}
-The held-out test-set results in Table \ref{tab:results_nyc} show a clear performance hierarchy. The GRC-LPR (Subway) model, which fuses tabular features with the non-Euclidean subway graph kernel, significantly outperforms all other models. It achieves the highest R² and the lowest RMSE, supporting the claim that incorporating the network topology can improve on a feature-only smoother using Euclidean coordinates alone.
+The cross-validated results in Table \ref{tab:results_nyc} show that the subway-context kernel improves on the feature-only LPR family in terms of RMSE, but the overall ranking is more mixed than in Experiment~1. GC-LPR (Subway) achieves the lowest mean RMSE, while KNN remains highly competitive and attains the best mean MAE and mean \(R^2\). GRC-LPR (Subway) remains stronger than the feature-only LPR variants, but in this experiment the additional response-based robustness term does not improve on the non-robust subway-context model in terms of RMSE. Figure~\ref{fig:nyc_exp2_rmse_boxplot} shows the fold-wise RMSE distributions for the same run and makes the overlap between the leading models explicit.
 
 \paragraph{\textbf{Analysis of Hyperparameters}}
-The cross-validation results reveal distinct behaviors compared to the California Housing experiment. First, both LPR and GRC-LPR selected a polynomial degree of $p=0$ (Nadaraya-Watson), indicating that the local price surface is highly irregular, favoring local averaging over linear extrapolation. 
+The selected hyperparameters again favor very local averaging. LPR, GC-LPR, and GRC-LPR all selected \(p=0\), while the subway-context models selected neighborhood sizes \(k=11\) and \(k=12\), compared with \(k=17\) for RSKLPR and \(k=9\) for KNN. For both subway-context models, the selected graph distance scale was \(1.0\), indicating that the useful contextual signal is concentrated in a very small topological neighborhood around each listing's nearest station.
 
-Second, regarding neighborhood size, standard LPR selected 18 neighbors, while GRC-LPR selected a tighter window of 12 neighbors. Contrast this with Experiment 1, where the context kernel allowed the neighborhood to expand (from 35 to 170). Here, the subway graph context acts as a strict constraint: topological proximity is so critical to price that the optimal strategy is to restrict smoothing to a very small, highly connected set of stations, rather than borrowing strength from a wider geographic area. 
+Unlike Experiment~1, the context kernel does not encourage substantially larger neighborhoods. Instead, the selected subway-context models stay at the lower edge of the stable local range, which is consistent with a highly irregular price surface where the graph context helps refine locality rather than broaden it.
 
 \begin{table}[h]
 \centering
-\caption{Model performance on the NYC Airbnb held-out test set after tuning on the training split by 5-fold cross-validation.}
+\caption{Model performance on the NYC Airbnb data under the pilot-tune-then-refit protocol. Entries report mean \(\pm\) standard deviation across 5 outer folds.}
 \label{tab:results_nyc}
-\begin{tabular}{@{}lrr@{}}
+\begin{tabular}{@{}lccc@{}}
 \toprule
-\textbf{Model} & \textbf{RMSE (Price)} & \textbf{R²} \\ \midrule
-\textbf{GRC-LPR (Subway)} & \textbf{\$1195.20} & \textbf{0.9354} \\
-K-Nearest Neighbors & \$1608.30 & 0.8830 \\
-RSKLPR (Standard) & \$1733.50 & 0.8641 \\
-Global Polynomial & \$2538.07 & 0.7086 \\
-Global Linear & \$3171.05 & 0.5452 \\ \bottomrule
+\textbf{Model} & \textbf{RMSE (Price)} & \textbf{MAE (Price)} & \textbf{R\(^2\)} \\ \midrule
+\textbf{GC-LPR (Subway)} & \textbf{\$1735.30 \(\pm\) 286.80} & \$213.57 \(\pm\) 21.34 & 0.8420 \(\pm\) 0.0529 \\
+KNN & \$1750.23 \(\pm\) 191.95 & \textbf{\$205.05 \(\pm\) 15.84} & \textbf{0.8431 \(\pm\) 0.0379} \\
+GRC-LPR (Subway) & \$1756.92 \(\pm\) 318.76 & \$214.16 \(\pm\) 22.42 & 0.8370 \(\pm\) 0.0617 \\
+LPR (Standard) & \$1841.51 \(\pm\) 264.87 & \$226.62 \(\pm\) 23.85 & 0.8240 \(\pm\) 0.0580 \\
+RSKLPR (Standard) & \$1925.76 \(\pm\) 236.59 & \$238.65 \(\pm\) 24.14 & 0.8098 \(\pm\) 0.0465 \\ \bottomrule
 \end{tabular}
 \end{table}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.72\textwidth]{nyc_airbnb_exp2_main_rmse_boxplot.png}
+    \caption{Fold-wise RMSE distributions for Experiment 2 under the pilot-tune-then-refit protocol. The subway-context models improve on the feature-only LPR variants, while KNN remains competitive with GC-LPR (Subway) in this dataset.}
+    \label{fig:nyc_exp2_rmse_boxplot}
+\end{figure}
 
 \begin{figure}[ht]
     \centering
@@ -926,7 +934,7 @@ because the cross term vanishes after conditioning on \((Z,C)\) and using \(\mat
 \label{app:exp_details}
 
 \subsection{Evaluation Protocols}
-Experiment 1 uses a pilot-tune-then-refit protocol rather than nested cross-validation. A pilot subset containing \(30\%\) of the California Housing data is drawn once, hyperparameters are selected on that subset by 3-fold cross-validation, and the selected configuration for each model is then held fixed while the models are refit and evaluated across 5 outer folds. Experiments 2 and 3 use single hold-out evaluations rather than outer repeated cross-validation. In Experiment 2, the NYC Airbnb data are split once into \(80\%\) training and \(20\%\) test data, and the reported model in Table~\ref{tab:results_nyc} is selected by 5-fold cross-validation on the training split. In Experiment 3, the airport data are split once into \(75\%\) training and \(25\%\) test data, and the reported model in Table~\ref{tab:results_airport} is selected by 10-fold cross-validation on the training split. The open-source release includes the full preprocessing and parameter grids used in these runs.
+Experiments 1 and 2 use a pilot-tune-then-refit protocol rather than nested cross-validation. In each case, a pilot subset containing \(30\%\) of the data is drawn once, hyperparameters are selected on that subset by 3-fold cross-validation, and the selected configuration for each model is then held fixed while the models are refit and evaluated across 5 outer folds. In Experiment 2, the local models are fit on \(\log(1+\texttt{price})\), but pilot selection and reported metrics are based on raw-price RMSE after inverse transformation of the predictions. Experiment 3 uses a single hold-out evaluation: the airport data are split once into \(75\%\) training and \(25\%\) test data, and the reported model in Table~\ref{tab:results_airport} is selected by 10-fold cross-validation on the training split. The open-source release includes the full preprocessing and parameter grids used in these runs.
 
 \subsection{Synthetic Target Construction in Experiment 3}
 The airport graph is constructed as an undirected graph on direct routes. For the synthetic target, only the PageRank, betweenness, and degree features enter the base signal, after standardization; the latitude and longitude variables are included in the regression features but not in the base-delay formula. The propagation operator uses the traffic-weighted adjacency matrix, row-normalized so each row averages the delays of neighboring airports. The update is iterated for seven steps as displayed in Section~\ref{s:exp_airport}, and the final simulated delay is shifted so that the response remains strictly positive. The graph context kernel used by GRC-LPR is separate from this propagation step: it is computed from weighted shortest-path distance on the same underlying undirected graph, with edge length equal to the inverse route count, so the kernel itself is symmetric.
