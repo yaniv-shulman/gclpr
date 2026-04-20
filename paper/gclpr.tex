@@ -727,6 +727,66 @@ KNN & 0.4326 $\pm$ 0.1072 & 0.2586 $\pm$ 0.0218 & 0.5573 $\pm$ 0.1079 \\ \bottom
 
 The performance margins are modest but consistent. GC-LPR (Graph) attains the best mean RMSE and mean \(R^2\), while GRC-LPR (Graph) is effectively tied and slightly improves mean MAE only negligibly. Relative to feature-only LPR, the graph kernel lowers mean RMSE from \(0.2127\) to \(0.2085\) and improves mean \(R^2\) from \(0.8853\) to \(0.8901\). The weak gain from the response-based robustness factor indicates that, in this synthetic setting, the main improvement comes from incorporating graph topology into the predictor kernel rather than from additional response reweighting.
 
+\subsection{Experiment 4: Public Graph-Signal Forecasting on the Hungary Chickenpox Benchmark}
+\label{s:exp_chickenpox}
+
+To complement the synthetic airport study with an external public benchmark, we next evaluate GC-LPR on the Hungary chickenpox dataset. This is a fixed graph-signal regression problem: the graph consists of 20 counties connected by 61 undirected edges, and the response is the weekly chickenpox count observed at each county over 521 weeks. After constructing four lagged predictors from the past weekly counts, each county-time pair becomes one regression sample, yielding 10{,}340 node-time observations with
+\[
+Z = (\texttt{lag\_4}, \texttt{lag\_3}, \texttt{lag\_2}, \texttt{lag\_1})
+\]
+and target \(Y\) equal to the next week's count.
+
+\paragraph{\textbf{Dataset and Setup}}
+This benchmark differs from Experiments~1--3 in that the graph and response are both observed rather than simulated, and the train/test protocol must preserve temporal ordering. Accordingly, Experiment~4 uses a rolling-origin design with 5 outer chronological train/test splits. On each outer split, hyperparameters are selected by 4-fold time-series cross-validation on the training window only, and the selected model is then evaluated on the next contiguous test block. Figures~\ref{fig:chickenpox_scatter}--\ref{fig:chickenpox_boxplot} summarize the held-out predictions, county-level error structure, and fold-wise RMSE distributions.
+
+\paragraph{\textbf{Models}}
+We again compare KNN, LPR, RSKLPR, GC-LPR (Graph), and GRC-LPR (Graph). The feature-only models operate only on the lagged-count vector \(Z\) using a tricube feature kernel and Manhattan distance. The graph-aware models use the compound kernel
+\[
+K_c(x, X_i) = K_{\text{feat}}(Z_i - Z_x) \times K_{\text{graph}}(C_i, C_x),
+\]
+where \(K_{\text{graph}}\) is an exponentially decaying hop-distance kernel on the county graph. The selected hyperparameters are highly stable across the 5 outer splits: LPR and RSKLPR always choose \textbf{size\_neighborhood \(=121\)}, while GC/GRC-LPR always choose \textbf{size\_neighborhood \(=361\)} and \textbf{distance\_scale \(=16.0\)}. This indicates that, on this benchmark, graph context is useful but acts as a broad structural regularizer rather than as a sharply localized graph slice.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.95\textwidth]{hungary_chickenpox_exp_4_scatter_grid.png}
+    \caption{Experiment~4 held-out prediction scatter plots aggregated over the 5 rolling-origin test windows. Each panel compares predicted and observed county-week chickenpox counts for one model.}
+    \label{fig:chickenpox_scatter}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.95\textwidth]{hungary_chickenpox_exp_4_graph_errors.png}
+    \caption{Experiment~4 county-level absolute-error maps on the Hungary chickenpox graph. Colors summarize held-out prediction error aggregated over the rolling-origin evaluation windows.}
+    \label{fig:chickenpox_errors}
+\end{figure}
+
+\paragraph{\textbf{Results}}
+Table~\ref{tab:results_chickenpox} reports the mean and standard deviation of the held-out test metrics across the 5 rolling-origin splits. The gains from graph context are modest but consistent. GC-LPR (Graph) attains the best mean RMSE and mean \(R^2\), while GRC-LPR (Graph) attains the best mean MAE by a very small margin. Relative to feature-only LPR, the hop-based graph kernel lowers mean RMSE from \(0.8347\) to \(0.8201\) and improves mean \(R^2\) from \(0.2961\) to \(0.3205\).
+
+\begin{table}[h]
+\centering
+\caption{Experiment~4 performance on the public Hungary chickenpox benchmark under 5 rolling-origin splits with 4-fold time-series cross-validation on each training window. Values are mean \(\pm\) standard deviation over held-out test metrics.}
+\label{tab:results_chickenpox}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{Model} & \textbf{RMSE} & \textbf{MAE} & \textbf{$R^2$} \\ \midrule
+\textbf{GC-LPR (Graph)} & \textbf{0.8201 $\pm$ 0.0906} & 0.5370 $\pm$ 0.0569 & \textbf{0.3205 $\pm$ 0.0407} \\
+GRC-LPR (Graph) & 0.8212 $\pm$ 0.0904 & \textbf{0.5367 $\pm$ 0.0572} & 0.3187 $\pm$ 0.0408 \\
+RSKLPR & 0.8320 $\pm$ 0.0933 & 0.5458 $\pm$ 0.0604 & 0.3007 $\pm$ 0.0441 \\
+LPR & 0.8347 $\pm$ 0.0952 & 0.5490 $\pm$ 0.0613 & 0.2961 $\pm$ 0.0473 \\
+KNN & 0.8486 $\pm$ 0.0976 & 0.5557 $\pm$ 0.0608 & 0.2736 $\pm$ 0.0321 \\ \bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.85\textwidth]{hungary_chickenpox_exp4_main_rmse_boxplot.png}
+    \caption{Fold-wise RMSE distribution for Experiment~4 under the rolling-origin protocol. The graph-aware models shift the RMSE distribution downward relative to KNN and feature-only LPR variants.}
+    \label{fig:chickenpox_boxplot}
+\end{figure}
+
+Taken together, Experiments~3 and~4 show two complementary graph-context regimes. In the synthetic airport task, the graph kernel recovers an explicitly simulated topological signal. On the public chickenpox benchmark, the benefit is smaller but still systematic, which is the more relevant result for external validation. In both cases, the main improvement comes from incorporating graph structure into the predictor kernel; the additional response-based robustness factor provides only marginal gains.
+
 
 \section{Conclusion}
 \label{s:Conclusion}
@@ -735,7 +795,7 @@ This work presented Generalized Context-Aware Local Polynomial Regression (GC-LP
 
 Our theoretical analysis re-frames the role of "context" not merely as a variance modifier, but as a fundamental component of the generative process $Y = m_C(Z)$. Under this view, GC-LPR acts as a projected smoother: the context kernels (whether discrete, geospatial, or graph-based) isolate a specific slice of the data manifold, effectively "masking" irrelevant observations before the local polynomial estimation takes place in $Z$. This interpretation justifies the use of kernels that are discontinuous with respect to Euclidean distance, such as those defined on road networks or administrative partitions.
 
-Empirically, we demonstrated that this decoupling yields significant performance gains. In the California Housing experiment, we showed that explicit geospatial kernels improve accuracy even when coordinates are already included as features. In the US Airport Network experiment, we demonstrated that topological contexts (flight paths) capture dependencies that standard Euclidean metrics strictly miss.
+Empirically, we demonstrated that this decoupling yields significant performance gains. In the California Housing experiment, we showed that explicit geospatial kernels improve accuracy even when coordinates are already included as features. In the US Airport Network experiment, we demonstrated that topological contexts (flight paths) capture dependencies that standard Euclidean metrics strictly miss. On the public Hungary chickenpox benchmark, graph-aware local smoothers again improved on feature-only baselines, albeit with smaller margins, providing external validation beyond the synthetic graph experiment.
 
 Ultimately, GC-LPR bridges the gap between interpretable classical statistics and modern geometric learning. It offers a powerful tool for domains where data is tabular but lives on an irregular domain, providing the adaptivity of graph signal processing with the well-understood bias-variance properties of local polynomials.
 
@@ -928,8 +988,11 @@ because the cross term vanishes after conditioning on \((Z,C)\) and using \(\mat
 \label{app:exp_details}
 
 \subsection{Evaluation Protocols}
-Experiment 1 uses a pilot-tune-then-refit protocol rather than nested cross-validation: a pilot subset containing \(30\%\) of the data is drawn once, hyperparameters are selected on that subset by 3-fold cross-validation, and the selected configuration for each model is then held fixed while the models are refit and evaluated across 5 outer folds. Experiment 2 uses a repeated hold-out design: for each of 5 repetitions, the data are split into \(80\%\) training and \(20\%\) test sets, hyperparameters are selected by 4-fold cross-validation on the training split, and the selected model is then evaluated once on the held-out test split. In Experiment 2, the local models are fit on \(\log(1+\texttt{price})\), but model selection and reported metrics are based on raw-price RMSE after inverse transformation of the predictions. Experiment 3 follows the same repeated hold-out design as Experiment~2: 5 repetitions of an \(80\%/20\%\) train/test split, with hyperparameters selected by 4-fold cross-validation on each training split and reported metrics aggregated over the held-out test sets.
+Experiment 1 uses a pilot-tune-then-refit protocol rather than nested cross-validation: a pilot subset containing \(30\%\) of the data is drawn once, hyperparameters are selected on that subset by 3-fold cross-validation, and the selected configuration for each model is then held fixed while the models are refit and evaluated across 5 outer folds. Experiment 2 uses a repeated hold-out design: for each of 5 repetitions, the data are split into \(80\%\) training and \(20\%\) test sets, hyperparameters are selected by 4-fold cross-validation on the training split, and the selected model is then evaluated once on the held-out test split. In Experiment 2, the local models are fit on \(\log(1+\texttt{price})\), but model selection and reported metrics are based on raw-price RMSE after inverse transformation of the predictions. Experiment 3 follows the same repeated hold-out design as Experiment~2: 5 repetitions of an \(80\%/20\%\) train/test split, with hyperparameters selected by 4-fold cross-validation on each training split and reported metrics aggregated over the held-out test sets. Experiment 4 uses a rolling-origin evaluation protocol suited to graph-temporal forecasting: the county-week samples are ordered chronologically, 5 outer train/test windows are formed without shuffling, and hyperparameters are selected by 4-fold time-series cross-validation inside each training window before a single held-out evaluation on the next contiguous time block.
 
 \subsection{Synthetic Target Construction in Experiment 3}
 The airport graph is constructed as an undirected graph on direct routes. For the synthetic target, only the PageRank, betweenness, and degree features enter the base signal, after standardization; the latitude and longitude variables are included in the regression features but not in the base-delay formula. The propagation operator uses the traffic-weighted adjacency matrix, row-normalized so each row averages the delays of neighboring airports. The update is iterated for seven steps as displayed in Section~\ref{s:exp_airport}, and the final simulated delay is shifted so that the response remains strictly positive. The graph context kernel used by GC/GRC-LPR is separate from this propagation step: it is computed from \emph{unweighted} shortest-path (hop) distance on the same undirected graph, so the context kernel captures topological locality while the synthetic target still reflects traffic-weighted diffusion.
+
+\subsection{Public Benchmark Construction in Experiment 4}
+The Hungary chickenpox benchmark is treated as a fixed graph-signal regression problem. The public dataset contains weekly chickenpox counts for 20 counties over 521 weeks on a county graph with 61 undirected edges. For Experiment~4, each node-time pair is flattened into one supervised sample with four lagged weekly counts as predictors and the next week's count as the response, yielding 10{,}340 samples in total. The graph-aware variants use the same tricube feature kernel as the feature-only models, multiplied by an exponentially decaying hop-distance kernel on the county graph.
 \end{document}
