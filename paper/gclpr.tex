@@ -606,7 +606,7 @@ The selected hyperparameters again favor very local smoothing. Across the 5 repe
 \label{tab:results_nyc}
 \begin{tabular}{@{}lccc@{}}
 \toprule
-\textbf{Model} & \textbf{RMSE (Price)} & \textbf{MAE (Price)} & \textbf{R\(^2\)} \\ \midrule
+\textbf{Model} & \textbf{RMSE (Price)} & \textbf{MAE (Price)} & \textbf{$R^2$} \\ \midrule
 \textbf{GRC-LPR (Subway)} & \textbf{\$1660.35 \(\pm\) 407.59} & \$213.53 \(\pm\) 35.05 & \textbf{0.8631 \(\pm\) 0.0554} \\
 GC-LPR (Subway) & \$1693.22 \(\pm\) 417.79 & \$218.58 \(\pm\) 34.94 & 0.8574 \(\pm\) 0.0583 \\
 \textbf{KNN} & \$1727.02 \(\pm\) 332.86 & \textbf{\$208.93 \(\pm\) 28.36} & 0.8537 \(\pm\) 0.0482 \\
@@ -674,15 +674,10 @@ This process creates a scenario where two airports with similar feature vectors 
 \end{figure}
 
 \paragraph{\textbf{Models}}
-We compare feature-only models against our context-aware approach. The implementation uses a single train/test split, with all hyperparameters selected by 10-fold cross-validation on the training split; Table~\ref{tab:results_airport} reports the resulting held-out test-set performance.
+We compare the same local-regression family used in the earlier experiments: KNN, LPR, RSKLPR, GC-LPR (Graph), and GRC-LPR (Graph). Experiment~3 uses 5 repeated 80/20 hold-out splits. For each repetition, hyperparameters are selected by 4-fold cross-validation on the training split, and Table~\ref{tab:results_airport} reports the mean and standard deviation of the held-out test metrics across the 5 repetitions.
 \begin{itemize}
-    \item \textbf{Baselines:} 
-    \begin{itemize}
-        \item \textbf{Global Linear:} Constrained to non-negative coefficients (\texttt{positive=True}).
-        \item \textbf{Random Forest:} Tuned to \texttt{max\_depth=20} with 100 estimators.
-        \item \textbf{LPR (Standard):} Uses a tricube kernel over $Z$ with the Mahalanobis metric. The cross-validation selected a large neighborhood size of \textbf{123 neighbors} with polynomial degree $p=1$.
-    \end{itemize}
-    \item \textbf{GRC-LPR (Graph):} Our proposed model utilizes the compound predictor kernel:
+    \item \textbf{Feature-only baselines:} LPR and RSKLPR use a tricube kernel over $Z$ with the Mahalanobis metric. Across the 5 repeated hold-out runs, the selected neighborhood sizes fall in the range \textbf{79--111} with polynomial degree fixed at $p=1$. KNN remains as a generic local nonparametric baseline.
+    \item \textbf{Graph-context models:} Our proposed graph-aware variants utilize the compound predictor kernel
     \[
     K_c(x, X_i) = K_{\text{feat}}(Z_i - Z_x) \times K_{\text{graph}}(C_i, C_x)
     \]
@@ -690,7 +685,7 @@ We compare feature-only models against our context-aware approach. The implement
     \[
     \K_{\D}^* = K_c \times K_r.
     \]
-    Here, $K_{\text{graph}}$ measures the shortest-path distance on the network. An extensive grid search (over 14,000 fits) selected a polynomial degree $p=1$, a robust conditional density weighting ($K_r=\text{'conden'}$), and a graph distance scale of $\approx \mathbf{0.31}$. This tight scale indicates that the optimal weighting decays rapidly as topological distance increases, enforcing strict structural locality. As shown in Figure~\ref{fig:airport_kernels}, the graph kernel assigns high weights to topologically connected nodes, effectively defining a non-Euclidean local neighborhood.
+    Here, $K_{\text{graph}}$ is based on \emph{unweighted} shortest-path distance on the airport graph. Across the repeated hold-out runs, GC/GRC-LPR select neighborhood sizes between \textbf{111} and \textbf{135}, with graph distance scales concentrated between \textbf{0.35} and \textbf{0.40} (and one run at \(0.75\)). As shown in Figure~\ref{fig:airport_kernels}, the graph kernel assigns high weights to airports that are close in hop distance on the route network, thereby defining a non-Euclidean local neighborhood.
 \end{itemize}
 
 \begin{figure}[ht]
@@ -708,28 +703,29 @@ We compare feature-only models against our context-aware approach. The implement
         \caption{Similarity from Houston (HOU).}
         \label{fig:airport_kernel_hou}
     \end{subfigure}
-    \caption{Visualization of the Graph Kernel ($K_{\text{graph}}$) weights. The heatmaps demonstrate how the similarity decays based on the shortest-path distance over the network edges rather than Euclidean distance. The red nodes indicate the query reference points (ATL and HOU).}
+    \caption{Visualization of the graph kernel \(K_{\text{graph}}\) used in the final Experiment~3 specification. The heatmaps show similarity based on unweighted shortest-path (hop) distance on the route network rather than Euclidean distance. The red nodes indicate the query reference airports (ATL and HOU).}
     \label{fig:airport_kernels}
 \end{figure}
 
 \paragraph{\textbf{Results}}
-The held-out test-set results in Table \ref{tab:results_airport} demonstrate a critical limitation of feature-based smoothing. Because the target is generated by graph propagation on the same underlying network later used to define the context kernel, this experiment should be read as a mechanism check for graph-structured dependence rather than as a broad benchmark against all graph regression methods.
+The repeated held-out results in Table~\ref{tab:results_airport} show that the graph-context models consistently improve on feature-only local smoothing. Because the target is generated by graph propagation on the same underlying network later used to define the context kernel, this experiment should be read as a mechanism check for graph-structured dependence rather than as a broad benchmark against all graph regression methods.
 
 \begin{table}[h]
 \centering
-\caption{Model performance on the US Airport Network held-out test set after tuning on the training split by 10-fold cross-validation. The GRC-LPR (Graph) model, which explicitly models the graph topology, achieves the best results in estimating the node function.}
+\caption{Experiment~3 performance under 5 repeated 80/20 hold-out splits with 4-fold cross-validation on each training split. Values are mean \(\pm\) standard deviation over held-out test metrics.}
 \label{tab:results_airport}
 \begin{tabular}{@{}lrrr@{}}
 \toprule
-\textbf{Model} & \textbf{R²} & \textbf{MAE} & \textbf{RMSE} \\ \midrule
-\textbf{GRC-LPR (Graph)} & \textbf{0.9256} & \textbf{0.1293} & \textbf{0.1661} \\
-LPR & 0.9048 & 0.1453 & 0.1879 \\
-Random Forest & 0.9031 & 0.1403 & 0.1896 \\
-Global Linear & 0.7664 & 0.2260 & 0.2944 \\ \bottomrule
+\textbf{Model} & \textbf{RMSE} & \textbf{MAE} & \textbf{$R^2$} \\ \midrule
+\textbf{GC-LPR (Graph)} & \textbf{0.2085 $\pm$ 0.0264} & \textbf{0.1529 $\pm$ 0.0169} & \textbf{0.8901 $\pm$ 0.0420} \\
+GRC-LPR (Graph) & 0.2087 $\pm$ 0.0267 & 0.1532 $\pm$ 0.0166 & 0.8897 $\pm$ 0.0430 \\
+RSKLPR & 0.2124 $\pm$ 0.0217 & 0.1590 $\pm$ 0.0158 & 0.8857 $\pm$ 0.0454 \\
+LPR & 0.2127 $\pm$ 0.0218 & 0.1595 $\pm$ 0.0156 & 0.8853 $\pm$ 0.0458 \\
+KNN & 0.4326 $\pm$ 0.1072 & 0.2586 $\pm$ 0.0218 & 0.5573 $\pm$ 0.1079 \\ \bottomrule
 \end{tabular}
 \end{table}
 
-Standard LPR hits a performance ceiling (R² = 0.9048) despite using a large neighborhood (123 neighbors), as it smooths over airports that look similar in $Z$ but are topologically distant. GRC-LPR (R² = \textbf{0.9256}) breaks this ceiling. By multiplying the feature kernel with the graph kernel, it localizes the regression to the specific branch of the network where the propagation occurred, showing that explicit context kernels are useful for recovering this graph-structured $m_C(Z)$ within the local polynomial family.
+The performance margins are modest but consistent. GC-LPR (Graph) attains the best mean RMSE and mean \(R^2\), while GRC-LPR (Graph) is effectively tied and slightly improves mean MAE only negligibly. Relative to feature-only LPR, the graph kernel lowers mean RMSE from \(0.2127\) to \(0.2085\) and improves mean \(R^2\) from \(0.8853\) to \(0.8901\). The weak gain from the response-based robustness factor indicates that, in this synthetic setting, the main improvement comes from incorporating graph topology into the predictor kernel rather than from additional response reweighting.
 
 
 \section{Conclusion}
@@ -932,8 +928,8 @@ because the cross term vanishes after conditioning on \((Z,C)\) and using \(\mat
 \label{app:exp_details}
 
 \subsection{Evaluation Protocols}
-Experiment 1 uses a pilot-tune-then-refit protocol rather than nested cross-validation: a pilot subset containing \(30\%\) of the data is drawn once, hyperparameters are selected on that subset by 3-fold cross-validation, and the selected configuration for each model is then held fixed while the models are refit and evaluated across 5 outer folds. Experiment 2 instead uses a repeated hold-out design: for each of 5 repetitions, the data are split into \(80\%\) training and \(20\%\) test sets, hyperparameters are selected by 4-fold cross-validation on the training split, and the selected model is then evaluated once on the held-out test split. In Experiment 2, the local models are fit on \(\log(1+\texttt{price})\), but model selection and reported metrics are based on raw-price RMSE after inverse transformation of the predictions. Experiment 3 uses a single hold-out evaluation: the airport data are split once into \(75\%\) training and \(25\%\) test data, and the reported model in Table~\ref{tab:results_airport} is selected by 10-fold cross-validation on the training split. The open-source release includes the full preprocessing and parameter grids used in these runs.
+Experiment 1 uses a pilot-tune-then-refit protocol rather than nested cross-validation: a pilot subset containing \(30\%\) of the data is drawn once, hyperparameters are selected on that subset by 3-fold cross-validation, and the selected configuration for each model is then held fixed while the models are refit and evaluated across 5 outer folds. Experiment 2 uses a repeated hold-out design: for each of 5 repetitions, the data are split into \(80\%\) training and \(20\%\) test sets, hyperparameters are selected by 4-fold cross-validation on the training split, and the selected model is then evaluated once on the held-out test split. In Experiment 2, the local models are fit on \(\log(1+\texttt{price})\), but model selection and reported metrics are based on raw-price RMSE after inverse transformation of the predictions. Experiment 3 follows the same repeated hold-out design as Experiment~2: 5 repetitions of an \(80\%/20\%\) train/test split, with hyperparameters selected by 4-fold cross-validation on each training split and reported metrics aggregated over the held-out test sets.
 
 \subsection{Synthetic Target Construction in Experiment 3}
-The airport graph is constructed as an undirected graph on direct routes. For the synthetic target, only the PageRank, betweenness, and degree features enter the base signal, after standardization; the latitude and longitude variables are included in the regression features but not in the base-delay formula. The propagation operator uses the traffic-weighted adjacency matrix, row-normalized so each row averages the delays of neighboring airports. The update is iterated for seven steps as displayed in Section~\ref{s:exp_airport}, and the final simulated delay is shifted so that the response remains strictly positive. The graph context kernel used by GRC-LPR is separate from this propagation step: it is computed from weighted shortest-path distance on the same underlying undirected graph, with edge length equal to the inverse route count, so the kernel itself is symmetric.
+The airport graph is constructed as an undirected graph on direct routes. For the synthetic target, only the PageRank, betweenness, and degree features enter the base signal, after standardization; the latitude and longitude variables are included in the regression features but not in the base-delay formula. The propagation operator uses the traffic-weighted adjacency matrix, row-normalized so each row averages the delays of neighboring airports. The update is iterated for seven steps as displayed in Section~\ref{s:exp_airport}, and the final simulated delay is shifted so that the response remains strictly positive. The graph context kernel used by GC/GRC-LPR is separate from this propagation step: it is computed from \emph{unweighted} shortest-path (hop) distance on the same undirected graph, so the context kernel captures topological locality while the synthetic target still reflects traffic-weighted diffusion.
 \end{document}
