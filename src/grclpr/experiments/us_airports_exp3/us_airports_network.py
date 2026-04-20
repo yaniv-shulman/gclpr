@@ -48,6 +48,7 @@ def load_airport_data_and_graph(
     """
     if not airports_csv_path.exists():
         raise FileNotFoundError(f"Missing airport metadata CSV: {airports_csv_path}")
+
     if not routes_csv_path.exists():
         raise FileNotFoundError(f"Missing airport routes CSV: {routes_csv_path}")
 
@@ -73,6 +74,7 @@ def load_airport_data_and_graph(
         iata: (float(row["longitude"]), float(row["latitude"]))
         for iata, row in airports_df.iterrows()
     }
+
     nx.set_node_attributes(airport_network, positions, "pos")
     nx.set_node_attributes(airport_network, airports_df["name"].to_dict(), "name")
     nx.set_node_attributes(airport_network, airports_df["city"].to_dict(), "city")
@@ -85,11 +87,13 @@ def load_airport_data_and_graph(
     df_features = df_features.join(airports_df[["latitude", "longitude"]]).dropna()
 
     scaler = StandardScaler()
+
     df_scaled = pd.DataFrame(
         scaler.fit_transform(df_features),
         columns=df_features.columns,
         index=df_features.index,
     )
+
     base_delay = (
         0.3 * df_scaled["pagerank"]
         + 0.5 * df_scaled["betweenness"]
@@ -111,6 +115,7 @@ def load_airport_data_and_graph(
 
     adj_norm = adj_matrix.div(adj_matrix.sum(axis=1), axis=0).fillna(0.0)
     delay_t = base_delay.copy()
+
     for _ in range(7):
         neighbor_delay = adj_norm.dot(delay_t)
         delay_t = 0.7 * base_delay + 0.3 * neighbor_delay
@@ -173,14 +178,14 @@ def airport_network_kernel_factory(
     predict_set_original_indices: np.ndarray,
     distance_scale: float = 1.0,
 ) -> KernelFn:
-    """Build an index-aware graph kernel based on weighted shortest paths.
+    """Build an index-aware graph kernel based on unweighted shortest paths.
 
     Args:
         graph: Airport route graph.
         original_idx_to_node_map: Global row-index to node-ID mapping.
         train_set_original_indices: Original row indices for the training set.
         predict_set_original_indices: Original row indices for the prediction set.
-        distance_scale: Exponential decay scale for weighted path distance.
+        distance_scale: Exponential decay scale for hop distance.
 
     Returns:
         A kernel function compatible with ``Rsklpr``.
@@ -241,7 +246,7 @@ def airport_network_kernel_factory(
                     graph,
                     source=target_node,
                     target=neighbor_node,
-                    weight="inverse_count",
+                    weight=None,
                 )
             except (nx.NetworkXNoPath, nx.NodeNotFound):
                 continue
@@ -274,7 +279,7 @@ class GraphRsklprWrapper(BaseEstimator, RegressorMixin):
         Args:
             size_neighborhood: Number of nearest neighbors.
             degree: Local polynomial degree.
-            distance_scale: Exponential decay scale for graph distance.
+            distance_scale: Exponential decay scale for graph hop distance.
             kp: Base predictor kernel.
             kr: Response kernel mode.
             metric_x: Distance metric for feature-space neighbor search.
@@ -756,7 +761,7 @@ def plot_graph_kernel_similarity(
     scalar_map.set_array([])
     cbar = plt.colorbar(scalar_map, ax=ax, shrink=0.8, orientation="vertical", pad=0.02)
     cbar.set_label(
-        f"Kernel Similarity (exp(-path_length / {distance_scale:.1f}))",
+        f"Kernel Similarity (exp(-hop_distance / {distance_scale:.1f}))",
         rotation=270,
         labelpad=15,
         fontsize=10,

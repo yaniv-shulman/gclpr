@@ -111,7 +111,7 @@ def test_scale_non_positional_features_preserves_coordinates() -> None:
 
 
 def test_airport_network_kernel_factory_uses_graph_distance(airport_graph: nx.Graph) -> None:
-    """The graph kernel should return 1.0 for self and decay with path length."""
+    """The graph kernel should decay with unweighted hop distance."""
     mapping = {0: "ATL", 1: "HOU", 2: "LAX"}
     kernel = exp3_utils.airport_network_kernel_factory(
         graph=airport_graph,
@@ -130,8 +130,8 @@ def test_airport_network_kernel_factory_uses_graph_distance(airport_graph: nx.Gr
     ).ravel()
 
     assert similarities[0] == pytest.approx(1.0)
-    assert similarities[1] > similarities[2]
-    assert similarities[2] > 0.0
+    assert similarities[1] == pytest.approx(float(np.exp(-1.0)))
+    assert similarities[2] == pytest.approx(float(np.exp(-2.0)))
 
 
 def test_graph_wrapper_and_search_helpers(

@@ -15,7 +15,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from rsklpr.kernels import laplacian_normalized_metric, tricube_normalized_metric
+from rsklpr.kernels import tricube_normalized_metric
 from sklearn.metrics import make_scorer, mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 
@@ -146,24 +146,32 @@ def build_search_grids(grid_profile: str = "full") -> Dict[str, Any]:
     Raises:
         ValueError: If ``grid_profile`` is unsupported.
     """
-    size_neighborhood_full: List[int] = [12, 16, 20, 24, 32, 40, 52]
-    size_neighborhood_reduced: List[int] = [12, 20, 32]
-    graph_distance_full: List[float] = [0.5, 1.0, 1.5, 2.0, 3.0]
-    graph_distance_reduced: List[float] = [1.0, 1.5, 2.0]
-    base_kernels = [tricube_normalized_metric, laplacian_normalized_metric]
+    # Experiment 3 behaves differently from Experiments 1 and 2. The feature-only
+    # local smoothers tend to prefer much broader neighborhoods, while the
+    # graph-context models benefit from a smaller graph hop-distance scale. The
+    # reduced profile is an exploratory coarse grid; the full profile is a
+    # denser final grid centered on the same regime.
+    size_neighborhood_feature_reduced: List[int] = [31, 63, 95, 127, 159]
+    size_neighborhood_feature_full: List[int] = [79, 87, 95, 103, 111]
+    size_neighborhood_graph_reduced: List[int] = [63, 95, 127, 159]
+    size_neighborhood_graph_full: List[int] = [111, 119, 127, 135, 143, 159]
+    graph_distance_reduced: List[float] = [0.2, 0.35, 0.5, 0.75, 1.0]
+    graph_distance_full: List[float] = [0.25, 0.3, 0.35, 0.4, 0.5, 0.75]
+    feature_kernel = tricube_normalized_metric
 
     if grid_profile == "smoke":
         return {
             "knn": {
                 "n_neighbors": [5],
                 "weights": ["distance"],
-                "p": [2],
+                "p": [1],
+                "leaf_size": [30],
             },
             "lpr": [
                 {
-                    "size_neighborhood": [12],
-                    "degree": [0],
-                    "kp": [tricube_normalized_metric],
+                    "size_neighborhood": [31],
+                    "degree": [1],
+                    "kp": [feature_kernel],
                     "metric_x": ["mahalanobis"],
                     "metric_x_params": [None],
                     "kr": ["none"],
@@ -171,9 +179,9 @@ def build_search_grids(grid_profile: str = "full") -> Dict[str, Any]:
             ],
             "rsklpr": [
                 {
-                    "size_neighborhood": [12],
-                    "degree": [0],
-                    "kp": [tricube_normalized_metric],
+                    "size_neighborhood": [31],
+                    "degree": [1],
+                    "kp": [feature_kernel],
                     "metric_x": ["mahalanobis"],
                     "metric_x_params": [None],
                     "kr": ["joint"],
@@ -181,10 +189,10 @@ def build_search_grids(grid_profile: str = "full") -> Dict[str, Any]:
             ],
             "gclpr_graph": [
                 {
-                    "size_neighborhood": [12],
-                    "degree": [0],
+                    "size_neighborhood": [31],
+                    "degree": [1],
                     "distance_scale": [1.0],
-                    "kp": [tricube_normalized_metric],
+                    "kp": [feature_kernel],
                     "metric_x": ["mahalanobis"],
                     "metric_x_params": [None],
                     "kr": ["none"],
@@ -192,10 +200,10 @@ def build_search_grids(grid_profile: str = "full") -> Dict[str, Any]:
             ],
             "grclpr_graph": [
                 {
-                    "size_neighborhood": [12],
-                    "degree": [0],
+                    "size_neighborhood": [31],
+                    "degree": [1],
                     "distance_scale": [1.0],
-                    "kp": [tricube_normalized_metric],
+                    "kp": [feature_kernel],
                     "metric_x": ["mahalanobis"],
                     "metric_x_params": [None],
                     "kr": ["conden"],
@@ -204,26 +212,30 @@ def build_search_grids(grid_profile: str = "full") -> Dict[str, Any]:
         }
 
     if grid_profile == "reduced":
-        size_neighborhood = size_neighborhood_reduced
+        knn_neighbors = [1, 2, 3, 4, 5, 7, 9]
+        feature_neighborhood = size_neighborhood_feature_reduced
+        graph_neighborhood = size_neighborhood_graph_reduced
         graph_distance = graph_distance_reduced
     elif grid_profile == "full":
-        size_neighborhood = size_neighborhood_full
+        knn_neighbors = [1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 41]
+        feature_neighborhood = size_neighborhood_feature_full
+        graph_neighborhood = size_neighborhood_graph_full
         graph_distance = graph_distance_full
     else:
         raise ValueError(f"Unsupported grid_profile={grid_profile!r}")
 
     return {
         "knn": {
-            "n_neighbors": [3, 5, 9, 15, 25],
+            "n_neighbors": knn_neighbors,
             "weights": ["distance"],
-            "p": [1, 2],
-            "leaf_size": [15, 30, 60],
+            "p": [1],
+            "leaf_size": [30],
         },
         "lpr": [
             {
-                "size_neighborhood": size_neighborhood,
-                "degree": [0, 1],
-                "kp": base_kernels,
+                "size_neighborhood": feature_neighborhood,
+                "degree": [1],
+                "kp": [feature_kernel],
                 "metric_x": ["mahalanobis"],
                 "metric_x_params": [None],
                 "kr": ["none"],
@@ -231,20 +243,20 @@ def build_search_grids(grid_profile: str = "full") -> Dict[str, Any]:
         ],
         "rsklpr": [
             {
-                "size_neighborhood": size_neighborhood,
-                "degree": [0, 1],
-                "kp": base_kernels,
+                "size_neighborhood": feature_neighborhood,
+                "degree": [1],
+                "kp": [feature_kernel],
                 "metric_x": ["mahalanobis"],
                 "metric_x_params": [None],
-                "kr": ["joint", "conden"],
+                "kr": ["joint"],
             }
         ],
         "gclpr_graph": [
             {
-                "size_neighborhood": size_neighborhood,
-                "degree": [0, 1],
+                "size_neighborhood": graph_neighborhood,
+                "degree": [1],
                 "distance_scale": graph_distance,
-                "kp": base_kernels,
+                "kp": [feature_kernel],
                 "metric_x": ["mahalanobis"],
                 "metric_x_params": [None],
                 "kr": ["none"],
@@ -252,13 +264,13 @@ def build_search_grids(grid_profile: str = "full") -> Dict[str, Any]:
         ],
         "grclpr_graph": [
             {
-                "size_neighborhood": size_neighborhood,
-                "degree": [0, 1],
+                "size_neighborhood": graph_neighborhood,
+                "degree": [1],
                 "distance_scale": graph_distance,
-                "kp": base_kernels,
+                "kp": [feature_kernel],
                 "metric_x": ["mahalanobis"],
                 "metric_x_params": [None],
-                "kr": ["joint", "conden"],
+                "kr": ["conden"],
             }
         ],
     }
