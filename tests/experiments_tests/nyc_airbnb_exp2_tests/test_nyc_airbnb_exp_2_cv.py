@@ -296,6 +296,10 @@ def test_normalize_config_smoke_mode_overrides_fields() -> None:
 
     with pytest.raises(ValueError):
         exp2_cv.normalize_config(exp2_cv.ExperimentConfig(scoring="bad_scoring"))
+    with pytest.raises(ValueError):
+        exp2_cv.normalize_config(exp2_cv.ExperimentConfig(holdout_fraction=0.0))
+    with pytest.raises(ValueError):
+        exp2_cv.normalize_config(exp2_cv.ExperimentConfig(holdout_repeats=0))
 
 
 def test_run_search_dispatches_to_standard_and_subway_search(
@@ -477,6 +481,51 @@ def test_evaluate_nested_cv_uses_search_results(
     assert set(predictions) == set(exp2_cv._model_order)
 
 
+def test_evaluate_holdout_cv_uses_search_results(
+    monkeypatch: pytest.MonkeyPatch,
+    subway_graph: nx.Graph,
+) -> None:
+    """Holdout evaluation should tune on train and score each held-out repeat."""
+
+    def fake_run_search(
+        model_key: str,
+        x_train: np.ndarray,
+        y_train_log: np.ndarray,
+        train_indices: np.ndarray,
+        subway_graph: nx.Graph,
+        original_idx_to_station_map: dict[int, str | None],
+        search_grids: dict[str, object],
+        config: exp2_cv.ExperimentConfig,
+    ) -> FakeSearch:
+        estimator = OffsetEstimator(offset=0.0).fit(x_train, y_train_log)
+        return FakeSearch(estimator, {"model": model_key})
+
+    monkeypatch.setattr(exp2_cv, "run_search", fake_run_search)
+
+    x = np.arange(120, dtype=float).reshape(30, 4)
+    y_log = np.linspace(0.0, 1.0, 30)
+    y_price = np.linspace(100.0, 200.0, 30)
+    rows, predictions = exp2_cv.evaluate_holdout_cv(
+        x=x,
+        y_log=y_log,
+        y_price=y_price,
+        scale_indices=[0, 1],
+        subway_graph=subway_graph,
+        original_idx_to_station_map={index: "A" for index in range(30)},
+        search_grids={key: {} for key in exp2_cv._model_order},
+        config=exp2_cv.ExperimentConfig(
+            protocol="holdout_cv",
+            holdout_fraction=0.2,
+            holdout_repeats=2,
+        ),
+    )
+
+    assert len(rows) == 2 * len(exp2_cv._model_order)
+    assert set(predictions) == set(exp2_cv._model_order)
+    assert sum(np.isfinite(predictions["knn"])) >= 6
+    assert {row["Fold"] for row in rows} == {1, 2}
+
+
 def test_save_outputs_and_valid_only_summary(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -554,6 +603,50 @@ def test_save_outputs_and_valid_only_summary(
     assert summary.loc["KNN", ("RMSE", "mean")] == pytest.approx(1.0)
     assert bool(metadata["reporting_uses_valid_runs_only"]) is True
 
+    holdout_predictions = {"knn": np.array([100.0, np.nan])}
+    holdout_config = exp2_cv.ExperimentConfig(protocol="holdout_cv", generate_plots=True, output_prefix="holdout")
+    exp2_cv.save_outputs(
+        coords=coords,
+        y_price=np.array([100.0, 200.0]),
+        fold_records=rows,
+        full_predictions=holdout_predictions,
+        config=holdout_config,
+        pilot_rows=None,
+    )
+    assert (tmp_path / "holdout_raw.csv").exists()
+    assert (tmp_path / "holdout_summary.csv").exists()
+    assert (tmp_path / "holdout_metadata.json").exists()
+    assert not (tmp_path / "holdout_rmse_boxplot.png").exists()
+
+    repeated_holdout_rows = rows + [
+        {
+            "Fold": 2,
+            "Model": "KNN",
+            "Protocol": "holdout_cv",
+            "Valid": True,
+            "Non_Finite_Pct": 0.0,
+            "RMSE": 1.2,
+            "MAE": 1.1,
+            "R2": 0.2,
+            "Selected_Params": "{}",
+        },
+    ]
+    repeated_holdout_config = exp2_cv.ExperimentConfig(
+        protocol="holdout_cv",
+        holdout_repeats=2,
+        generate_plots=True,
+        output_prefix="holdout_repeated",
+    )
+    exp2_cv.save_outputs(
+        coords=coords,
+        y_price=np.array([100.0, 200.0]),
+        fold_records=repeated_holdout_rows,
+        full_predictions=holdout_predictions,
+        config=repeated_holdout_config,
+        pilot_rows=None,
+    )
+    assert (tmp_path / "holdout_repeated_rmse_boxplot.png").exists()
+
 
 def test_run_experiment_routes_to_selected_protocol(
     monkeypatch: pytest.MonkeyPatch,
@@ -586,7 +679,7 @@ def test_run_experiment_routes_to_selected_protocol(
     )
     monkeypatch.setattr(exp2_cv, "build_search_grids", lambda grid_profile="full": {"grid": grid_profile})
 
-    called: dict[str, int] = {"pilot": 0, "nested": 0, "save": 0}
+    called: dict[str, int] = {"pilot": 0, "nested": 0, "holdout": 0, "save": 0}
 
     def fake_pilot(
         x: np.ndarray,
@@ -652,28 +745,69 @@ def test_run_experiment_routes_to_selected_protocol(
             {key: np.zeros(len(y_price)) for key in exp2_cv._model_order},
         )
 
+    def fake_holdout(
+        x: np.ndarray,
+        y_log: np.ndarray,
+        y_price: np.ndarray,
+        scale_indices: list[int],
+        subway_graph: nx.Graph,
+        original_idx_to_station_map: dict[int, str | None],
+        search_grids: dict[str, object],
+        config: exp2_cv.ExperimentConfig,
+    ) -> tuple[list[dict[str, object]], dict[str, np.ndarray]]:
+        called["holdout"] += 1
+        return (
+            [
+                {
+                    "Fold": 1,
+                    "Model": "KNN",
+                    "Valid": True,
+                    "Non_Finite_Pct": 0.0,
+                    "RMSE": 1.0,
+                    "MAE": 1.0,
+                    "R2": 0.0,
+                }
+            ],
+            {key: np.zeros(len(y_price)) for key in exp2_cv._model_order},
+        )
+
     def fake_save(*args: object, **kwargs: object) -> None:
         called["save"] += 1
 
     monkeypatch.setattr(exp2_cv, "pilot_tune_models", fake_pilot)
     monkeypatch.setattr(exp2_cv, "evaluate_fixed_estimators", fake_fixed)
     monkeypatch.setattr(exp2_cv, "evaluate_nested_cv", fake_nested)
+    monkeypatch.setattr(exp2_cv, "evaluate_holdout_cv", fake_holdout)
     monkeypatch.setattr(exp2_cv, "save_outputs", fake_save)
 
     df = exp2_cv.run_experiment(exp2_cv.ExperimentConfig(protocol="pilot_tune_then_refit", generate_plots=False))
     assert called["pilot"] == 1
     assert called["nested"] == 0
+    assert called["holdout"] == 0
     assert called["save"] == 1
     assert not df.empty
 
     called["pilot"] = 0
     called["nested"] = 0
+    called["holdout"] = 0
     called["save"] = 0
     df_nested = exp2_cv.run_experiment(exp2_cv.ExperimentConfig(protocol="nested_cv", generate_plots=False))
     assert called["pilot"] == 0
     assert called["nested"] == 1
+    assert called["holdout"] == 0
     assert called["save"] == 1
     assert not df_nested.empty
+
+    called["pilot"] = 0
+    called["nested"] = 0
+    called["holdout"] = 0
+    called["save"] = 0
+    df_holdout = exp2_cv.run_experiment(exp2_cv.ExperimentConfig(protocol="holdout_cv", generate_plots=False))
+    assert called["pilot"] == 0
+    assert called["nested"] == 0
+    assert called["holdout"] == 1
+    assert called["save"] == 1
+    assert not df_holdout.empty
 
 
 def test_wrapper_and_search_helpers(
