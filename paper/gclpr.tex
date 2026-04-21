@@ -261,7 +261,7 @@ The proposed GC-LPR framework sits at the intersection of nonparametric smoothin
 \subsection{Generalized Product Kernels and Mixed Data}
 The foundational challenge in nonparametric regression is the ``curse of dimensionality.'' \citet{li2004nonparametric} revolutionized the treatment of mixed data by introducing generalized product kernels. Their estimator, $\hat{E}(Y|X^c, X^d)$, utilizes standard kernels for continuous variables ($X^c$) and variation-based kernels (e.g., Aitchison-Aitken) for discrete variables ($X^d$). A critical property of this framework is ``automatic relevance determination'': cross-validation can effectively shrink the bandwidths of irrelevant predictors to infinity, smoothing them out of the model \citep{hall2007nonparametric}.
 
-However, the Li-Racine framework assumes that all variables entering the kernel also enter the regression function. GC-LPR relaxes this by decoupling the sets. We allow context variables $C$ to enter the kernel $K_c$ without forcing them into the polynomial basis $r_p(Z)$. This is broadly in line with work on associated kernels for mixed or support-constrained regressors \citep{some2016effects}, which emphasizes matching the kernel support to the support of each regressor. In GC-LPR, however, the context kernels serve as auxiliary locality weights rather than as additional regressors entering the polynomial mean directly.
+However, the Racine-Li framework assumes that all variables entering the kernel also enter the regression function. GC-LPR relaxes this by decoupling the sets. We allow context variables $C$ to enter the kernel $K_c$ without forcing them into the polynomial basis $r_p(Z)$. This is broadly in line with work on associated kernels for mixed or support-constrained regressors \citep{some2016effects}, which emphasizes matching the kernel support to the support of each regressor. In GC-LPR, however, the context kernels serve as auxiliary locality weights rather than as additional regressors entering the polynomial mean directly.
 
 \subsection{Varying Coefficient Models and GWR}
 Varying Coefficient Models (VCM) extend the linear model by allowing coefficients to change smoothly as a function of an index variable, typically written as $Y = X^\top \beta(U) + \epsilon$ \citep{hastie1993varying, fan1999statistical}. \citet{he2009double} further refined VCM estimation using double-smoothing bias reduction techniques.
@@ -534,7 +534,7 @@ To control runtime while still reporting fold-wise uncertainty, we use a pilot-t
 \end{itemize}
 
 \paragraph{\textbf{Results and Statistical Analysis}}
-The results are summarized in Table \ref{tab:results_california_10fold}. Both context-aware models outperform the feature-only local smoothers and KNN. GRC-LPR (the robust, context-aware variant) achieves the best mean performance across all three reported metrics, with RMSE $0.5045 \pm 0.0112$, MAE $0.3356 \pm 0.0074$, and $R^2 = 0.8087 \pm 0.0090$. GC-LPR is the second-best model, while standard LPR and RSKLPR remain clearly ahead of KNN. The predictions scatter plot is shown in Figure \ref{figure:california_housling_exp_1_scatter_grid}, and the fold-wise RMSE distributions are shown in Figure \ref{figure:california_exp1_rmse_boxplot}.
+The results are summarized in Table \ref{tab:results_california_5fold}. Both context-aware models outperform the feature-only local smoothers and KNN. GRC-LPR (the robust, context-aware variant) achieves the best mean performance across all three reported metrics, with RMSE $0.5045 \pm 0.0112$, MAE $0.3356 \pm 0.0074$, and $R^2 = 0.8087 \pm 0.0090$. GC-LPR is the second-best model, while standard LPR and RSKLPR remain clearly ahead of KNN. The predictions scatter plot is shown in Figure \ref{figure:california_housling_exp_1_scatter_grid}, and the fold-wise RMSE distributions are shown in Figure \ref{figure:california_exp1_rmse_boxplot}.
 
 \begin{figure}[ht]
 \centering
@@ -547,7 +547,7 @@ The results are summarized in Table \ref{tab:results_california_10fold}. Both co
 \begin{table}[h]
 \centering
 \caption{Experiment 1 results on the California Housing dataset under the pilot-tune-then-refit protocol (5 held-out folds; mean $\pm$ SD). The context-aware GRC-LPR variant achieves the strongest average performance.}
-\label{tab:results_california_10fold}
+\label{tab:results_california_5fold}
 \small
 \begin{tabular}{@{}lrrr@{}}
 \toprule
@@ -856,7 +856,7 @@ Conditioning on the predictors $\mathbb{X} = \{X_1, \dots, X_n\}$, the expectati
 \[
 \E[\hat{\vartheta}(x) \mid \mathbb{X}] = S_n^{-1} \E[T_n \mid \mathbb{X}] = S_n^{-1} \left( \frac{1}{n|H|} R^\top W_x \mathbf{m} \right),
 \]
-where $\mathbf{m} = (m(Z_1, C_1), \dots, m(Z_n, C_n))^\top$.
+where $\mathbf{m} = \big(m_{C_1}(Z_1), \dots, m_{C_n}(Z_n)\big)^\top$.
 
 \subsection{Proof of Lemma \ref{lem:mw_target} (Context-smoothed conditional target)}
 \label{app:proof_mw_target}
