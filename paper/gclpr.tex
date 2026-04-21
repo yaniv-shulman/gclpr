@@ -526,49 +526,49 @@ The empirical goal here is to compare GC/GRC-LPR against feature-only local poly
 As a foundational validation of the proposed framework, we test the hypothesis that explicit context kernels improve performance even when contextual variables (coordinates) are already present in the primary feature set. This is intended as a within-family comparison against feature-only local smoothers rather than a full ablation of every geographic representation choice. We evaluate GC-LPR against standard LPR, its robust variant RSKLPR \citep{shulman2025robust}, and a K-Nearest Neighbors (KNN) baseline.
 
 \paragraph{\textbf{Dataset and Setup}}
-We utilize the California Housing dataset \citep{pace1997sparse}, modeling the median house value (\texttt{MedHouseVal}) using a feature vector $Z$ containing \texttt{MedInc}, \texttt{AveRooms}, \texttt{Latitude}, and \texttt{Longitude}. Non-geospatial features were standardized. We report a 5-fold outer evaluation, with mean and standard deviation over the held-out folds.
+We utilize the California Housing dataset \citep{pace1997sparse}, modeling the median house value (\texttt{MedHouseVal}) using a feature vector $Z$ containing \texttt{MedInc}, \texttt{AveRooms}, \texttt{Latitude}, and \texttt{Longitude}. Non-geospatial features were standardized. We use a repeated hold-out protocol with 5 repetitions of an \(80\%/20\%\) train/test split and report mean and standard deviation over the held-out test results.
 
-To control runtime while still reporting fold-wise uncertainty, we use a pilot-tune-then-refit protocol: hyperparameters are selected once on a pilot subset by 3-fold cross-validation and then held fixed while the models are refit and evaluated on each outer fold. The hyperparameter search space for local polynomial models included neighborhood size ($k \in [7,151]$), polynomial degree ($p \in \{0,1\}$), Laplacian and Tricube predictor kernels, and Minkowski or Mahalanobis distances. For GC-LPR and GRC-LPR, the search also optimized the length-scale of the Haversine context kernel. Additional evaluation details are collected in~\ref{app:exp_details}. The primary comparison is between:
+For each repetition, hyperparameters are selected by 4-fold cross-validation on the training split only, and the selected model is then evaluated once on the held-out test split. The hyperparameter search space for local polynomial models included neighborhood size ($k \in [7,151]$), polynomial degree ($p \in \{0,1\}$), Laplacian and Tricube predictor kernels, and Minkowski or Mahalanobis distances. For GC-LPR and GRC-LPR, the search also optimized the length-scale of the Haversine context kernel. Additional evaluation details are collected in~\ref{app:exp_details}. The primary comparison is between:
 \begin{itemize}
     \item \textbf{LPR / RSKLPR (Standard):} Utilizes a single features kernel over the full feature vector $Z$. 
     \item \textbf{GC-LPR / GRC-LPR (Geospatial):} Employs the compound kernel $K_c = K_{\text{std}}(Z) \cdot K_{\text{geo}}(\text{Lat, Lon})$, where $K_{\text{geo}}$ is a Haversine-based RBF kernel.
 \end{itemize}
 
 \paragraph{\textbf{Results and Statistical Analysis}}
-The results are summarized in Table \ref{tab:results_california_5fold}. Both context-aware models outperform the feature-only local smoothers and KNN. GRC-LPR (the robust, context-aware variant) achieves the best mean performance across all three reported metrics, with RMSE $0.5045 \pm 0.0112$, MAE $0.3356 \pm 0.0074$, and $R^2 = 0.8087 \pm 0.0090$. GC-LPR is the second-best model, while standard LPR and RSKLPR remain clearly ahead of KNN. The predictions scatter plot is shown in Figure \ref{figure:california_housling_exp_1_scatter_grid}, and the fold-wise RMSE distributions are shown in Figure \ref{figure:california_exp1_rmse_boxplot}.
+The results are summarized in Table \ref{tab:results_california_5fold}. Both context-aware models outperform the feature-only local smoothers and KNN. GRC-LPR (the robust, context-aware variant) achieves the best mean performance across all three reported metrics, with RMSE $0.4993 \pm 0.0074$, MAE $0.3324 \pm 0.0034$, and $R^2 = 0.8134 \pm 0.0054$. GC-LPR is the second-best model, while the feature-only LPR family remains clearly ahead of KNN. The predictions scatter plot is shown in Figure \ref{figure:california_housling_exp_1_scatter_grid}, and the split-wise RMSE distributions are shown in Figure \ref{figure:california_exp1_rmse_boxplot}.
 
 \begin{figure}[ht]
 \centering
 {\includegraphics[width=1.0\textwidth]{california_housling_exp_1_scatter_grid.png}}
-\caption{Comparison of model predictions for Experiment 1, aggregating the held-out predictions across the 5 outer folds. The y-axis is the predicted value and x-axis is the actual value. The dashed line represents ideal predictions. The context-aware variants show tighter clustering around the ideal line than the feature-only smoothers.}
+\caption{Comparison of model predictions for Experiment 1, aggregating the held-out predictions across the 5 repeated 80/20 train/test splits. The y-axis is the predicted value and x-axis is the actual value. The dashed line represents ideal predictions. The context-aware variants show tighter clustering around the ideal line than the feature-only smoothers.}
 \label{figure:california_housling_exp_1_scatter_grid}
 \end{figure}
 
 
 \begin{table}[h]
 \centering
-\caption{Experiment 1 results on the California Housing dataset under the pilot-tune-then-refit protocol (5 held-out folds; mean $\pm$ SD). The context-aware GRC-LPR variant achieves the strongest average performance.}
+\caption{Experiment 1 results on the California Housing dataset under 5 repeated 80/20 hold-out splits with 4-fold cross-validation on each training split. Values are mean \(\pm\) standard deviation over held-out test metrics.}
 \label{tab:results_california_5fold}
 \small
 \begin{tabular}{@{}lrrr@{}}
 \toprule
 \textbf{Model} & \textbf{RMSE} & \textbf{MAE} & \textbf{$R^2$} \\ \midrule
-\textbf{GRC-LPR (Geospatial)} & \textbf{0.5045 $\pm$ 0.0112} & \textbf{0.3356 $\pm$ 0.0074} & \textbf{0.8087 $\pm$ 0.0090} \\
-GC-LPR (Geospatial) & 0.5152 $\pm$ 0.0115 & 0.3446 $\pm$ 0.0067 & 0.8005 $\pm$ 0.0087 \\
-RSKLPR (Standard) & 0.5318 $\pm$ 0.0091 & 0.3525 $\pm$ 0.0061 & 0.7875 $\pm$ 0.0068 \\
-LPR (Standard) & 0.5332 $\pm$ 0.0091 & 0.3573 $\pm$ 0.0063 & 0.7864 $\pm$ 0.0065 \\
-KNN & 0.5450 $\pm$ 0.0149 & 0.3574 $\pm$ 0.0073 & 0.7767 $\pm$ 0.0135 \\ \bottomrule
+\textbf{GRC-LPR (Geospatial)} & \textbf{0.4993 \(\pm\) 0.0074} & \textbf{0.3324 \(\pm\) 0.0034} & \textbf{0.8134 \(\pm\) 0.0054} \\
+GC-LPR (Geospatial) & 0.5060 \(\pm\) 0.0098 & 0.3398 \(\pm\) 0.0051 & 0.8084 \(\pm\) 0.0067 \\
+RSKLPR (Standard) & 0.5267 \(\pm\) 0.0100 & 0.3501 \(\pm\) 0.0055 & 0.7923 \(\pm\) 0.0090 \\
+LPR (Standard) & 0.5280 \(\pm\) 0.0066 & 0.3536 \(\pm\) 0.0040 & 0.7914 \(\pm\) 0.0063 \\
+KNN & 0.5423 \(\pm\) 0.0117 & 0.3562 \(\pm\) 0.0055 & 0.7798 \(\pm\) 0.0118 \\ \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{figure}[ht]
 \centering
 {\includegraphics[width=0.85\textwidth]{california_exp1_main_rmse_boxplot.png}}
-\caption{Fold-wise RMSE distributions for Experiment 1 under the pilot-tune-then-refit protocol. The context-aware variants shift the full RMSE distribution downward, with GRC-LPR achieving the lowest center and the strongest average performance across folds.}
+\caption{RMSE distributions for Experiment 1 under the repeated 80/20 hold-out protocol. The context-aware variants shift the full RMSE distribution downward, with GRC-LPR achieving the lowest center and the strongest average performance across held-out splits.}
 \label{figure:california_exp1_rmse_boxplot}
 \end{figure}
 
-The explicit decoupling of geospatial context leads to a marked improvement over standard LPR (RMSE $0.5152$ vs $0.5332$). Incorporating the response-based robustness factor ($K_r$) improves the context-aware model further, reducing RMSE from $0.5152$ to $0.5045$ and MAE from $0.3446$ to $0.3356$. In contrast, the robustness factor alone offers only a marginal gain in the feature-only setting (RSKLPR vs.\ LPR).
+The explicit decoupling of geospatial context leads to a marked improvement over standard LPR (RMSE $0.5060$ vs.\ $0.5280$). Incorporating the response-based robustness factor ($K_r$) improves the context-aware model further, reducing RMSE from $0.5060$ to $0.4993$ and MAE from $0.3398$ to $0.3324$. In contrast, the robustness factor alone offers only a modest gain in the feature-only setting (RSKLPR vs.\ LPR).
 
 \paragraph{\textbf{Spatial Error Distribution}}
 To investigate the qualitative impact of context-awareness, we mapped the prediction errors across California (Figure \ref{figure:california_geospatial_errors}). The bottom row, corresponding to GC-LPR and GRC-LPR, is visibly more uniform than the feature-only local smoothers in the top row. The context-aware models better adapt to the distinct price dynamics of the San Francisco Bay Area and Greater Los Angeles, whereas the feature-only smoothers still over-smooth across these spatial boundaries.
@@ -576,18 +576,18 @@ To investigate the qualitative impact of context-awareness, we mapped the predic
 \begin{figure}[ht]
 \centering
 {\includegraphics[width=1.0\textwidth]{california_housling_exp_1_geospatial_errors.png}}
-\caption{Geospatial distribution of prediction errors across California, aggregating the held-out predictions across the 5 outer folds. The top row shows feature-only local smoothers (LPR and RSKLPR), while the bottom row shows the context-aware variants (GC-LPR and GRC-LPR). The context-aware models exhibit lower and more spatially uniform errors, especially in high-variance coastal urban centers.}
+\caption{Geospatial distribution of prediction errors across California, aggregating the held-out predictions across the 5 repeated 80/20 train/test splits. The top row shows feature-only local smoothers (LPR and RSKLPR), while the bottom row shows the context-aware variants (GC-LPR and GRC-LPR). The context-aware models exhibit lower and more spatially uniform errors, especially in high-variance coastal urban centers.}
 \label{figure:california_geospatial_errors}
 \end{figure}
 
 \paragraph{\textbf{Effective Neighborhood Analysis}}
-The pilot tuning stage selected noticeably larger neighborhoods for the context-aware variants than for the feature-only local smoothers: $k=127$ for GC-LPR and $k=137$ for GRC-LPR, compared with $k=77$ for LPR and $k=37$ for RSKLPR. This is consistent with the intended role of the context kernel: it allows the estimator to borrow strength from a wider Euclidean neighborhood while still down-weighting geographically irrelevant observations. The result is a more stable local fit without the same degree of cross-region smoothing bias.
+Across the 5 repeated hold-out runs, the selected neighborhoods remained noticeably larger for the context-aware variants than for the feature-only local smoothers: \(k \in \{117,127,137\}\) for GC-LPR and \(k \in \{117,137,147\}\) for GRC-LPR, compared with \(k \in \{57,67\}\) for LPR and \(k \in \{27,37\}\) for RSKLPR. The local-polynomial models uniformly selected \(p=1\). This is consistent with the intended role of the context kernel: it allows the estimator to borrow strength from a wider Euclidean neighborhood while still down-weighting geographically irrelevant observations. The result is a more stable local fit without the same degree of cross-region smoothing bias.
 
 \subsection{Experiment 2: Fusing Tabular, Geospatial, and Network Context in NYC}
 The purpose of the second experiment is to demonstrate the use of a more advanced geospatial kernel that takes similar inputs as in Experiment 1 (i.e., \texttt{Latitude} and \texttt{Longitude}), but employs a non-Euclidean kernel on a graph. The goal is to show that standard distance metrics (Euclidean or Haversine) are often insufficient, and that a context-aware model can capture a more meaningful, network-based definition of proximity.
 
 \paragraph{\textbf{Dataset and Setup}}
-We use the archived NYC detailed-listings snapshot dated February 13, 2026 from Inside Airbnb \citep{insideairbnb2026nyc} to predict listing \texttt{price}. The features include standard tabular attributes (\texttt{host\_listings\_count}, \texttt{room\_type}, etc.) as well as \texttt{Latitude} and \texttt{Longitude}. The subway context graph is reconstructed from the MTA New York City Transit static GTFS subway feed \citep{mta_gtfs_subway_2026}. Unlike Experiment~1, we use a repeated hold-out protocol: for each of 5 repetitions, the data are split into \(80\%\) training and \(20\%\) test sets, hyperparameters are selected by 4-fold cross-validation on the training split, and the selected model is then evaluated once on the held-out test split. The local models are fit on \(\log(1+\texttt{price})\), but tuning and reported metrics are based on raw-price RMSE after inverse transformation. For the local smoothers, the neighborhood search is restricted to the stable local range \(k \in \{12,\ldots,20\}\). Table~\ref{tab:results_nyc} reports the mean and standard deviation across the 5 held-out test results. Additional implementation details are collected in~\ref{app:exp_details}.
+We use the archived NYC detailed-listings snapshot dated February 13, 2026 from Inside Airbnb \citep{insideairbnb2026nyc} to predict listing \texttt{price}. The features include standard tabular attributes (\texttt{host\_listings\_count}, \texttt{room\_type}, etc.) as well as \texttt{Latitude} and \texttt{Longitude}. The subway context graph is reconstructed from the MTA New York City Transit static GTFS subway feed \citep{mta_gtfs_subway_2026}. We use a repeated hold-out protocol: for each of 5 repetitions, the data are split into \(80\%\) training and \(20\%\) test sets, hyperparameters are selected by 4-fold cross-validation on the training split, and the selected model is then evaluated once on the held-out test split. The local models are fit on \(\log(1+\texttt{price})\), but tuning and reported metrics are based on raw-price RMSE after inverse transformation. For the local smoothers, the neighborhood search is restricted to the stable local range \(k \in \{12,\ldots,20\}\). Table~\ref{tab:results_nyc} reports the mean and standard deviation across the 5 held-out test results. Additional implementation details are collected in~\ref{app:exp_details}.
 The primary comparison is between:
 
 \begin{itemize}
@@ -1034,7 +1034,7 @@ because the cross term vanishes after conditioning on \((Z,C)\) and using \(\mat
 \label{app:exp_details}
 
 \subsection{Evaluation Protocols}
-Experiment 1 uses a pilot-tune-then-refit protocol rather than nested cross-validation: a pilot subset containing \(30\%\) of the data is drawn once, hyperparameters are selected on that subset by 3-fold cross-validation, and the selected configuration for each model is then held fixed while the models are refit and evaluated across 5 outer folds. Experiment 2 uses a repeated hold-out design: for each of 5 repetitions, the data are split into \(80\%\) training and \(20\%\) test sets, hyperparameters are selected by 4-fold cross-validation on the training split, and the selected model is then evaluated once on the held-out test split. In Experiment 2, the local models are fit on \(\log(1+\texttt{price})\), but model selection and reported metrics are based on raw-price RMSE after inverse transformation of the predictions. Experiment 3 follows the same repeated hold-out design as Experiment~2: 5 repetitions of an \(80\%/20\%\) train/test split, with hyperparameters selected by 4-fold cross-validation on each training split and reported metrics aggregated over the held-out test sets. Experiment 4 uses a rolling-origin evaluation protocol suited to graph-temporal forecasting: the county-week samples are ordered chronologically, 5 outer train/test windows are formed without shuffling, and hyperparameters are selected by 4-fold time-series cross-validation inside each training window before a single held-out evaluation on the next contiguous time block.
+Experiment 1 uses the same repeated hold-out design as Experiments~2 and~3: 5 repetitions of an \(80\%/20\%\) train/test split, with hyperparameters selected by 4-fold cross-validation on each training split and reported metrics aggregated over the held-out test sets. Experiment 2 also fits the local models on \(\log(1+\texttt{price})\), but model selection and reported metrics are based on raw-price RMSE after inverse transformation of the predictions. Experiment 4 uses a rolling-origin evaluation protocol suited to graph-temporal forecasting: the county-week samples are ordered chronologically, 5 outer train/test windows are formed without shuffling, and hyperparameters are selected by 4-fold time-series cross-validation inside each training window before a single held-out evaluation on the next contiguous time block.
 
 \subsection{Public Data Sources for Experiments 2--4}
 Experiment 2 uses the archived NYC detailed listings snapshot dated February 13, 2026 from Inside Airbnb \citep{insideairbnb2026nyc}; the subway context graph is reconstructed from the MTA New York City Transit static GTFS subway feed \citep{mta_gtfs_subway_2026}. Experiment 3 uses the public \texttt{airports.csv} airport-metadata file and \texttt{flights-airport.csv} route-count file distributed with Vega's airport tutorial and datasets repository \citep{vega_airports_2026,vega_flights_airport_2026}. Experiment 4 uses the Chickenpox Cases in Hungary benchmark introduced by \citet{rozemberczki2021chickenpox}; the implementation reads the public JSON mirror distributed with PyTorch Geometric Temporal \citep{pyg_temporal_chickenpox_2026}.

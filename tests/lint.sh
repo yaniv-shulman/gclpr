@@ -4,7 +4,6 @@ set -euo pipefail
 
 GCLPR_REPO_DIR=$(git rev-parse --show-toplevel)
 TARGETS=("$GCLPR_REPO_DIR/src" "$GCLPR_REPO_DIR/tests")
-mapfile -t PY_FILES < <(find "${TARGETS[@]}" -type f -name "*.py" | sort)
 
 while getopts ":f" option; do
     case $option in
@@ -19,14 +18,10 @@ while getopts ":f" option; do
 done
 
 if [ -z "${FIX:-}" ]; then
-    for file in "${PY_FILES[@]}"; do
-        poetry run black --check "$file"
-    done
+    poetry run black --check "${TARGETS[@]}"
     poetry run ruff check "${TARGETS[@]}"
 else
-    for file in "${PY_FILES[@]}"; do
-        poetry run black "$file"
-    done
+    poetry run black "${TARGETS[@]}"
     poetry run ruff check "${TARGETS[@]}" --fix
 fi
 

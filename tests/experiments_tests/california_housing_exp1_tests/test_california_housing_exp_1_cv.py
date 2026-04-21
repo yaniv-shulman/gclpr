@@ -160,12 +160,19 @@ def test_normalize_config_smoke_mode_overrides_fields() -> None:
     assert config.grid_profile == "smoke"
     assert config.outer_folds == 2
     assert config.inner_folds == 2
+    assert config.holdout_repeats == 1
     assert config.generate_plots is False
     assert config.max_samples == 800
     assert config.output_prefix.endswith("_smoke")
 
     with pytest.raises(ValueError):
         exp1_cv.normalize_config(exp1_cv.ExperimentConfig(scoring="bad_scoring"))
+
+    with pytest.raises(ValueError):
+        exp1_cv.normalize_config(exp1_cv.ExperimentConfig(holdout_fraction=1.0))
+
+    with pytest.raises(ValueError):
+        exp1_cv.normalize_config(exp1_cv.ExperimentConfig(holdout_repeats=0))
 
 
 def test_run_search_dispatches_to_selected_search_function(
@@ -335,6 +342,38 @@ def test_evaluate_nested_cv_uses_search_results(
     assert set(predictions) == set(exp1_cv._model_order)
 
 
+def test_evaluate_holdout_cv_uses_search_results(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Holdout evaluation should retune inside each training split."""
+
+    def fake_run_search(
+        model_key: str,
+        x_train: np.ndarray,
+        y_train: np.ndarray,
+        search_grids: dict[str, object],
+        config: exp1_cv.ExperimentConfig,
+    ) -> FakeSearch:
+        estimator = OffsetEstimator(offset=0.0).fit(x_train, y_train)
+        return FakeSearch(estimator, {"model": model_key})
+
+    monkeypatch.setattr(exp1_cv, "run_search", fake_run_search)
+
+    x = np.arange(160, dtype=float).reshape(40, 4)
+    y = np.linspace(0.0, 1.0, 40)
+    rows, predictions = exp1_cv.evaluate_holdout_cv(
+        x,
+        y,
+        {key: {} for key in exp1_cv._model_order},
+        exp1_cv.ExperimentConfig(protocol="holdout_cv", holdout_repeats=2, holdout_fraction=0.25),
+    )
+
+    assert len(rows) == 2 * len(exp1_cv._model_order)
+    assert set(predictions) == set(exp1_cv._model_order)
+    assert all(row["Protocol"] == "holdout_cv" for row in rows)
+    assert any(np.isfinite(predictions[key]).any() for key in predictions)
+
+
 def test_save_outputs_writes_tables_metadata_and_summary_plot(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -459,7 +498,7 @@ def test_run_experiment_routes_to_selected_protocol(
     monkeypatch.setattr(exp1_cv, "load_raw_data", lambda max_samples=None, seed=42: (x, y))
     monkeypatch.setattr(exp1_cv, "build_search_grids", lambda grid_profile="full": {"grid": grid_profile})
 
-    called: dict[str, int] = {"pilot": 0, "nested": 0, "save": 0}
+    called: dict[str, int] = {"pilot": 0, "nested": 0, "holdout": 0, "save": 0}
 
     def fake_pilot(
         x: np.ndarray,
@@ -496,28 +535,55 @@ def test_run_experiment_routes_to_selected_protocol(
             {key: np.zeros(len(y)) for key in exp1_cv._model_order},
         )
 
+    def fake_holdout(
+        x: np.ndarray,
+        y: np.ndarray,
+        search_grids: dict[str, object],
+        config: exp1_cv.ExperimentConfig,
+    ) -> tuple[list[dict[str, object]], dict[str, np.ndarray]]:
+        called["holdout"] += 1
+        return (
+            [{"Fold": 1, "Model": "KNN", "RMSE": 1.0, "MAE": 1.0, "R2": 0.0}],
+            {key: np.zeros(len(y)) for key in exp1_cv._model_order},
+        )
+
     def fake_save(*args: object, **kwargs: object) -> None:
         called["save"] += 1
 
     monkeypatch.setattr(exp1_cv, "pilot_tune_models", fake_pilot)
     monkeypatch.setattr(exp1_cv, "evaluate_fixed_estimators", fake_fixed)
     monkeypatch.setattr(exp1_cv, "evaluate_nested_cv", fake_nested)
+    monkeypatch.setattr(exp1_cv, "evaluate_holdout_cv", fake_holdout)
     monkeypatch.setattr(exp1_cv, "save_outputs", fake_save)
 
     df = exp1_cv.run_experiment(exp1_cv.ExperimentConfig(protocol="pilot_tune_then_refit", generate_plots=False))
     assert called["pilot"] == 1
     assert called["nested"] == 0
+    assert called["holdout"] == 0
     assert called["save"] == 1
     assert not df.empty
 
     called["pilot"] = 0
     called["nested"] = 0
+    called["holdout"] = 0
     called["save"] = 0
     df_nested = exp1_cv.run_experiment(exp1_cv.ExperimentConfig(protocol="nested_cv", generate_plots=False))
     assert called["pilot"] == 0
     assert called["nested"] == 1
+    assert called["holdout"] == 0
     assert called["save"] == 1
     assert not df_nested.empty
+
+    called["pilot"] = 0
+    called["nested"] = 0
+    called["holdout"] = 0
+    called["save"] = 0
+    df_holdout = exp1_cv.run_experiment(exp1_cv.ExperimentConfig(protocol="holdout_cv", generate_plots=False))
+    assert called["pilot"] == 0
+    assert called["nested"] == 0
+    assert called["holdout"] == 1
+    assert called["save"] == 1
+    assert not df_holdout.empty
 
 
 def test_rsklpr_wrapper_fit_and_predict(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -68,13 +68,15 @@ _non_geo_cols: List[int] = [0, 1]
 class ExperimentConfig:
     """Configuration for California Housing Experiment 1."""
 
-    protocol: str = "pilot_tune_then_refit"
+    protocol: str = "holdout_cv"
     search_mode: str = "grid"
-    grid_profile: str = "full"
+    grid_profile: str = "reduced"
     scoring: str = "strict_rmse"
     outer_folds: int = 5
-    inner_folds: int = 3
+    inner_folds: int = 4
     pilot_fraction: float = 0.30
+    holdout_fraction: float = 0.20
+    holdout_repeats: int = 5
     random_state: int = 42
     n_jobs: int = -1
     verbose: int = 0
@@ -242,7 +244,7 @@ def build_search_grids(grid_profile: str = "full") -> Dict[str, Any]:
             },
             "lpr": [
                 {
-                    "size_neighborhood": [27, 37, 47, 57, 67, 87],
+                    "size_neighborhood": [57, 67, 77, 87, 97],
                     "degree": [0, 1],
                     "kp": [laplacian_normalized_metric, tricube_normalized_metric],
                     "metric_x": ["minkowski"],
@@ -252,7 +254,7 @@ def build_search_grids(grid_profile: str = "full") -> Dict[str, Any]:
             ],
             "rsklpr": [
                 {
-                    "size_neighborhood": [107, 127, 147],
+                    "size_neighborhood": [27, 37, 47, 57],
                     "degree": [1],
                     "kp": [laplacian_normalized_metric],
                     "metric_x": ["minkowski"],
@@ -262,7 +264,7 @@ def build_search_grids(grid_profile: str = "full") -> Dict[str, Any]:
             ],
             "gclpr_geo": [
                 {
-                    "size_neighborhood": [97, 117, 137, 147],
+                    "size_neighborhood": [107, 117, 127, 137],
                     "degree": [1],
                     "kp": geo_kp_lists,
                     "metric_x": ["minkowski"],
@@ -272,7 +274,7 @@ def build_search_grids(grid_profile: str = "full") -> Dict[str, Any]:
             ],
             "grclpr_geo": [
                 {
-                    "size_neighborhood": [97, 117, 137, 147],
+                    "size_neighborhood": [117, 127, 137, 147],
                     "degree": [1],
                     "kp": geo_kp_lists,
                     "metric_x": ["minkowski"],
@@ -731,6 +733,119 @@ def evaluate_nested_cv(
     return fold_records, full_predictions
 
 
+def evaluate_holdout_cv(
+    x: np.ndarray,
+    y: np.ndarray,
+    search_grids: Dict[str, Any],
+    config: ExperimentConfig,
+) -> Tuple[List[Dict[str, Any]], Dict[str, np.ndarray]]:
+    """
+    Evaluate all models on one or more held-out test splits.
+
+    Args:
+        x: Full feature matrix.
+        y: Full target vector.
+        search_grids: Search spaces keyed by model identifier.
+        config: Experiment configuration.
+
+    Returns:
+        Result rows and averaged full-length predictions on the rows that
+        appeared in at least one held-out test split.
+    """
+    fold_records: List[Dict[str, Any]] = []
+    prediction_sums: Dict[str, np.ndarray] = {key: np.zeros_like(y, dtype=float) for key in _model_order}
+    prediction_counts: Dict[str, np.ndarray] = {key: np.zeros_like(y, dtype=int) for key in _model_order}
+
+    repeat_i: int
+    for repeat_i in range(config.holdout_repeats):
+        train_idx: np.ndarray
+        test_idx: np.ndarray
+
+        train_idx, test_idx = train_test_split(
+            np.arange(len(y)),
+            test_size=config.holdout_fraction,
+            shuffle=True,
+            random_state=config.random_state + repeat_i,
+        )
+
+        train_idx = np.asarray(train_idx, dtype=int)
+        test_idx = np.asarray(test_idx, dtype=int)
+
+        print(
+            "\n--- Holdout evaluation "
+            f"{repeat_i + 1}/{config.holdout_repeats} "
+            f"(train={1.0 - config.holdout_fraction:.0%}, test={config.holdout_fraction:.0%}) ---"
+        )
+
+        x_train_scaled: np.ndarray
+        x_test_scaled: np.ndarray
+        x_train_scaled, x_test_scaled = scale_non_geo_features(x[train_idx], x[test_idx])
+        y_train: np.ndarray = y[train_idx]
+        y_test: np.ndarray = y[test_idx]
+        model_key: str
+
+        for model_key in _model_order:
+            label: str = _model_labels[model_key]
+            search: Any = run_search(
+                model_key=model_key,
+                x_train=x_train_scaled,
+                y_train=y_train,
+                search_grids=search_grids,
+                config=config,
+            )
+
+            estimator: BaseEstimator = search.best_estimator_
+            y_pred: np.ndarray = np.asarray(estimator.predict(x_test_scaled), dtype=float).ravel()
+            finite_mask: np.ndarray = np.isfinite(y_pred)
+            prediction_sums[model_key][test_idx[finite_mask]] += y_pred[finite_mask]
+            prediction_counts[model_key][test_idx[finite_mask]] += 1
+
+            valid: bool
+            non_finite_fraction: float
+            valid, non_finite_fraction = prediction_validity(y_pred=y_pred)
+            metrics: Dict[str, float]
+
+            if valid:
+                metrics = compute_metrics(y_true=y_test, y_pred=y_pred)
+            else:
+                metrics = {
+                    "RMSE": float("nan"),
+                    "MAE": float("nan"),
+                    "R2": float("nan"),
+                }
+
+            fold_records.append(
+                {
+                    "Fold": repeat_i + 1,
+                    "Model": label,
+                    "Protocol": config.protocol,
+                    "Valid": valid,
+                    "Non_Finite_Pct": 100.0 * non_finite_fraction,
+                    "RMSE": metrics["RMSE"],
+                    "MAE": metrics["MAE"],
+                    "R2": metrics["R2"],
+                    "Selected_Params": str(search.best_params_),
+                }
+            )
+
+            if valid:
+                print(
+                    f"  > {label}: RMSE={metrics['RMSE']:.4f} | " f"MAE={metrics['MAE']:.4f} | R2={metrics['R2']:.4f}"
+                )
+            else:
+                print(f"  > {label}: invalid predictions ({100.0 * non_finite_fraction:.1f}% non-finite)")
+
+    full_predictions: Dict[str, np.ndarray] = {}
+    model_key = ""
+    for model_key in _model_order:
+        averaged: np.ndarray = np.full_like(y, np.nan, dtype=float)
+        nonzero_mask: np.ndarray = prediction_counts[model_key] > 0
+        averaged[nonzero_mask] = prediction_sums[model_key][nonzero_mask] / prediction_counts[model_key][nonzero_mask]
+        full_predictions[model_key] = averaged
+
+    return fold_records, full_predictions
+
+
 def save_outputs(
     x: np.ndarray,
     y: np.ndarray,
@@ -783,19 +898,33 @@ def save_outputs(
     if not config.generate_plots:
         return
 
+    evaluated_mask: np.ndarray = np.zeros_like(y, dtype=bool)
+    y_pred_full: np.ndarray
+    for y_pred_full in full_predictions.values():
+        evaluated_mask |= np.isfinite(y_pred_full)
+
+    if not np.any(evaluated_mask):
+        return
+
+    x_plot: np.ndarray = x[evaluated_mask]
+    y_plot: np.ndarray = y[evaluated_mask]
+    predictions_plot: Dict[str, np.ndarray] = {
+        key: np.asarray(y_pred_full[evaluated_mask], dtype=float) for key, y_pred_full in full_predictions.items()
+    }
+
     agg_results_for_plots: Dict[str, Dict[str, float]] = {}
     model_key: str
-    y_pred_full: np.ndarray
+    y_pred_plot: np.ndarray
 
-    for model_key, y_pred_full in full_predictions.items():
+    for model_key, y_pred_plot in predictions_plot.items():
         valid: bool
-        valid, _ = prediction_validity(y_pred_full)
+        valid, _ = prediction_validity(y_pred_plot)
 
         if valid:
             agg_results_for_plots[model_key] = {
-                "RMSE": float(np.sqrt(mean_squared_error(y, y_pred_full))),
-                "MAE": float(mean_absolute_error(y, y_pred_full)),
-                "R²": float(r2_score(y, y_pred_full)),
+                "RMSE": float(np.sqrt(mean_squared_error(y_plot, y_pred_plot))),
+                "MAE": float(mean_absolute_error(y_plot, y_pred_plot)),
+                "R²": float(r2_score(y_plot, y_pred_plot)),
             }
         else:
             agg_results_for_plots[model_key] = {
@@ -805,27 +934,28 @@ def save_outputs(
             }
 
     plot_prediction_scatter_grid(
-        predictions=full_predictions,
+        predictions=predictions_plot,
         results=agg_results_for_plots,
-        y_test=y,
+        y_test=y_plot,
         save_plots=True,
         output_dir=output_dir,
     )
 
     plot_geospatial_error_maps(
-        predictions=full_predictions,
+        predictions=predictions_plot,
         results=agg_results_for_plots,
-        x_test=x,
-        y_test=y,
+        x_test=x_plot,
+        y_test=y_plot,
         save_plots=True,
         output_dir=output_dir,
     )
 
-    save_rmse_fold_plot(
-        df_results=valid_results,
-        output_dir=output_dir,
-        output_prefix=config.output_prefix,
-    )
+    if config.protocol != "holdout_cv" or config.holdout_repeats > 1:
+        save_rmse_fold_plot(
+            df_results=valid_results,
+            output_dir=output_dir,
+            output_prefix=config.output_prefix,
+        )
 
 
 def save_rmse_fold_plot(
@@ -899,11 +1029,20 @@ def normalize_config(config: ExperimentConfig) -> ExperimentConfig:
     Raises:
         ValueError: If ``protocol`` or ``search_mode`` is unsupported.
     """
-    if config.protocol not in {"pilot_tune_then_refit", "nested_cv"}:
-        raise ValueError("protocol must be 'pilot_tune_then_refit' or 'nested_cv'")
+    if config.protocol not in {"pilot_tune_then_refit", "nested_cv", "holdout_cv"}:
+        raise ValueError("protocol must be 'pilot_tune_then_refit', 'nested_cv', or 'holdout_cv'")
 
     if config.search_mode not in {"grid", "random"}:
         raise ValueError("search_mode must be 'grid' or 'random'")
+
+    if not 0.0 < config.pilot_fraction < 1.0:
+        raise ValueError("pilot_fraction must be strictly between 0 and 1")
+
+    if not 0.0 < config.holdout_fraction < 1.0:
+        raise ValueError("holdout_fraction must be strictly between 0 and 1")
+
+    if config.holdout_repeats < 1:
+        raise ValueError("holdout_repeats must be at least 1")
 
     if config.smoke:
         config = replace(
@@ -912,6 +1051,8 @@ def normalize_config(config: ExperimentConfig) -> ExperimentConfig:
             outer_folds=2,
             inner_folds=2,
             pilot_fraction=min(config.pilot_fraction, 0.10),
+            holdout_fraction=min(config.holdout_fraction, 0.20),
+            holdout_repeats=1,
             generate_plots=False,
             max_samples=config.max_samples or 800,
             output_prefix=f"{config.output_prefix}_smoke",
@@ -958,6 +1099,13 @@ def run_experiment(config: ExperimentConfig) -> pd.DataFrame:
             selected_params=selected_params,
             config=config,
         )
+    elif config.protocol == "holdout_cv":
+        fold_records, full_predictions = evaluate_holdout_cv(
+            x=x,
+            y=y,
+            search_grids=search_grids,
+            config=config,
+        )
     else:
         fold_records, full_predictions = evaluate_nested_cv(
             x,
@@ -986,8 +1134,8 @@ def parse_args() -> ExperimentConfig:
 
     parser.add_argument(
         "--protocol",
-        choices=["pilot_tune_then_refit", "nested_cv"],
-        default="pilot_tune_then_refit",
+        choices=["pilot_tune_then_refit", "nested_cv", "holdout_cv"],
+        default="holdout_cv",
     )
 
     parser.add_argument("--search-mode", choices=["grid", "random"], default="grid")
@@ -995,12 +1143,14 @@ def parse_args() -> ExperimentConfig:
     parser.add_argument(
         "--grid-profile",
         choices=["full", "reduced", "smoke"],
-        default="full",
+        default="reduced",
     )
 
     parser.add_argument("--outer-folds", type=int, default=5)
-    parser.add_argument("--inner-folds", type=int, default=3)
+    parser.add_argument("--inner-folds", type=int, default=4)
     parser.add_argument("--pilot-fraction", type=float, default=0.30)
+    parser.add_argument("--holdout-fraction", type=float, default=0.20)
+    parser.add_argument("--holdout-repeats", type=int, default=5)
     parser.add_argument("--random-state", type=int, default=42)
     parser.add_argument("--n-jobs", type=int, default=-1)
     parser.add_argument("--verbose", type=int, default=0)
@@ -1030,6 +1180,8 @@ def parse_args() -> ExperimentConfig:
         outer_folds=args.outer_folds,
         inner_folds=args.inner_folds,
         pilot_fraction=args.pilot_fraction,
+        holdout_fraction=args.holdout_fraction,
+        holdout_repeats=args.holdout_repeats,
         random_state=args.random_state,
         n_jobs=args.n_jobs,
         verbose=args.verbose,
