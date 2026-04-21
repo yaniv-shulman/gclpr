@@ -282,7 +282,7 @@ In summary, GC-LPR can be viewed as a decomposed local-polynomial framework rela
 \label{sec:theory}
 
 We study the estimator in \eqref{eq:gc_lpr_loss} at a fixed query point \(x^\star\in\mathcal{X}\).
-Write \(z=\psi_0(x^\star)\in\mathbb{R}^d\) and \(x^\star=(z,c^\star)\), and assume that \(z\) is an interior point of the support of \(Z\). When discussing population quantities,
+Write \(z=\psi_0(x^\star)\in\mathbb{R}^d\), and let \(c^\star\) denote the associated context value of \(x^\star\) under the decomposition \(X\mapsto (Z,C)\). Assume that \(z\) is an interior point of the support of \(Z\). When discussing population quantities,
 we use the regular conditional distribution of \((X,Y)\) given \(Z=\psi_0(X)\), and write
 \(\mathbb{E}[\cdot\mid Z=u]\) for conditional expectations.
 Throughout this section we assume i.i.d.\ sampling of \(\{(X_i,Y_i)\}_{i=1}^n\). Consequently, the asymptotic results below do not cover graph-dependent or graph-temporal dependence structures such as those used in Experiments~3 and~4; those experiments should therefore be read as empirical demonstrations outside the scope of the present theory.
@@ -368,7 +368,7 @@ uniformly bounded above: \(0\le K_j(\cdot,\cdot;\eta_j)\le \bar K_j<\infty\). (E
 factor by \(K_j/\bar K_j\in[0,1]\), which only rescales the weighted least-squares objective by a constant and does
 not change its minimizer.)
 
-Fix \(x^\star=(z,c^\star)\). Assume the conditional mean weight
+Fix \(x^\star\in\mathcal{X}\). Assume the conditional mean weight
 \[
 \gamma_{x^\star}(u)=\mathbb{E}[W(x^\star,X)\mid Z=u]
 \]
@@ -388,7 +388,7 @@ Combined with Assumptions~\ref{ass:data} and \ref{ass:context}, this pointwise p
 
 \begin{assumption}[Effective residual second-moment regularity]
 \label{ass:variance_moment}
-Fix \(x^\star=(z,c^\star)\), and define
+Fix \(x^\star\in\mathcal{X}\), and define
 \[
 \nu_{x^\star}(u)\coloneqq
 \mathbb{E}\!\left[\,W(x^\star,X)^2\,\big(Y-m_W(u;x^\star)\big)^2\mid Z=u\,\right].
@@ -432,7 +432,7 @@ does not depend on \(\beta\), and the remaining term reduces by iterated expecta
 
 \begin{proposition}[Bias decomposition and rate]
 \label{prop:bias}
-Under Assumptions \ref{ass:data}--\ref{ass:positivity}, fix \(x^\star=(z,c^\star)\). The GC-LPR intercept estimator
+Under Assumptions \ref{ass:data}--\ref{ass:positivity}, fix \(x^\star\in\mathcal{X}\). The GC-LPR intercept estimator
 \(\hat m(x^\star)\coloneqq e_1^\top \hat\beta(x^\star)\), where \(e_1=(1,0,\dots,0)\) selects the intercept term,
 has induced population target \(m_W(z;x^\star)\). Moreover, its bias relative to the
 context-specific mean \(m_{c^\star}(z)\) decomposes as
@@ -466,7 +466,7 @@ Proof in~\ref{app:proof_bias}.
 
 \begin{proposition}[Asymptotic variance]
 \label{prop:variance}
-Under Assumptions \ref{ass:data}--\ref{ass:variance_moment}, fix \(x^\star=(z,c^\star)\) with \(z=\psi_0(x^\star)\) an interior point of the support of \(Z\). Then
+Under Assumptions \ref{ass:data}--\ref{ass:variance_moment}, fix \(x^\star\in\mathcal{X}\) such that \(z=\psi_0(x^\star)\) is an interior point of the support of \(Z\). Then
 \[
 \mathrm{Var}\{\hat m(x^\star)\}
 =
@@ -922,7 +922,7 @@ This proves Lemma~\ref{lem:mw_target}.
 Throughout the proof we use the notation of Appendix~A.1.
 
 \begin{proof}
-Fix a query point $x^\star$ and write $z:=\psi_0(x^\star)$, with context $c^\star$.
+Fix a query point $x^\star$ and write $z:=\psi_0(x^\star)$.
 By Lemma~\ref{lem:mw_target}, the context-smoothed mean \(m_W(u;x^\star)\) is, for each \(u\), the unique conditional weighted least-squares target induced by the context weight \(W(x^\star,X)\). By Lemma~\ref{lem:weighted_target}, the population GC-LPR objective at \(x^\star\),
 \[
 \Jcal_{\mathrm{gc-lpr}}(x^\star;\beta),
@@ -959,7 +959,7 @@ If the context kernels enforce exact selection of the context cell containing \(
 \subsection{Proof of Proposition \ref{prop:variance} (Asymptotic variance)}
 \label{app:proof_variance}
 \begin{proof}
-Fix \(x^\star=(z,c^\star)\). By Lemma~\ref{lem:weighted_target}, the variance analysis is that of standard local polynomial regression for the target \(m_W(\cdot;x^\star)\) under the effective design density
+Fix \(x^\star\in\mathcal{X}\) and write \(z=\psi_0(x^\star)\). By Lemma~\ref{lem:weighted_target}, the variance analysis is that of standard local polynomial regression for the target \(m_W(\cdot;x^\star)\) under the effective design density
 \[
 q_{x^\star}(u)\coloneqq f_Z(u)\gamma_{x^\star}(u).
 \]
