@@ -5,7 +5,7 @@ import copy
 import json
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
-from typing import Any, Callable, List, Dict, Tuple
+from typing import Any, Callable, Dict, List, Tuple
 
 import networkx as nx
 import numpy as np
@@ -972,8 +972,7 @@ def evaluate_holdout_cv(
 
             if valid:
                 print(
-                    f"  > {label}: RMSE={metrics['RMSE']:.4f} | "
-                    f"MAE={metrics['MAE']:.4f} | R2={metrics['R2']:.4f}"
+                    f"  > {label}: RMSE={metrics['RMSE']:.4f} | " f"MAE={metrics['MAE']:.4f} | R2={metrics['R2']:.4f}"
                 )
             else:
                 print(f"  > {label}: invalid predictions ({100.0 * non_finite_fraction:.1f}% non-finite)")
@@ -1049,8 +1048,7 @@ def save_outputs(
     coords_plot = coords.loc[evaluated_mask].reset_index(drop=True)
     y_price_plot = y_price[evaluated_mask]
     predictions_plot = {
-        key: np.asarray(y_pred_full[evaluated_mask], dtype=float)
-        for key, y_pred_full in full_predictions.items()
+        key: np.asarray(y_pred_full[evaluated_mask], dtype=float) for key, y_pred_full in full_predictions.items()
     }
 
     agg_results_for_plots: dict[str, dict[str, float]] = {}

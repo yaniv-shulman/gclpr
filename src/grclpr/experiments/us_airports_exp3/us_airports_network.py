@@ -1,4 +1,5 @@
 """Utilities for Experiment 3 on the US airport network."""
+
 import math
 import warnings
 from collections.abc import Callable, Mapping
@@ -70,10 +71,7 @@ def load_airport_data_and_graph(
     airports_df = airports_df.loc[airports_df.index.intersection(valid_airports)]
     airport_network = airport_network.subgraph(airports_df.index).copy()
 
-    positions = {
-        iata: (float(row["longitude"]), float(row["latitude"]))
-        for iata, row in airports_df.iterrows()
-    }
+    positions = {iata: (float(row["longitude"]), float(row["latitude"])) for iata, row in airports_df.iterrows()}
 
     nx.set_node_attributes(airport_network, positions, "pos")
     nx.set_node_attributes(airport_network, airports_df["name"].to_dict(), "name")
@@ -586,9 +584,7 @@ def cv_graph(
 def _setup_airport_map_ax() -> Any:
     """Create a standard Cartopy axes object for the contiguous US."""
     plt.figure(figsize=(15, 10))
-    ax: Any = plt.axes(
-        projection=ccrs.AlbersEqualArea(central_longitude=-96.0, central_latitude=37.5)
-    )
+    ax: Any = plt.axes(projection=ccrs.AlbersEqualArea(central_longitude=-96.0, central_latitude=37.5))
     ax.set_extent([-125, -66.5, 20, 50], crs=ccrs.Geodetic())
     ax.add_feature(cfeature.LAND, color="#f0f0f0")
     ax.add_feature(cfeature.OCEAN, alpha=0.5)
@@ -649,11 +645,7 @@ def plot_airport_network_map(
     )
     delays = cast(dict[str, float], nx.get_node_attributes(airport_network, "delay"))
     degrees = dict(airport_network.degree())
-    pos_latlon = {
-        node: pos_latlon[node]
-        for node in airport_network.nodes()
-        if node in pos_latlon
-    }
+    pos_latlon = {node: pos_latlon[node] for node in airport_network.nodes() if node in pos_latlon}
     nodes_list = list(pos_latlon.keys())
     node_colors = [delays.get(node, 0.0) for node in nodes_list]
     node_sizes = [degrees.get(node, 0) * 5 for node in nodes_list]
@@ -725,11 +717,7 @@ def plot_graph_kernel_similarity(
         nx.get_node_attributes(airport_network, "pos"),
     )
     degrees = dict(airport_network.degree())
-    pos_latlon = {
-        node: pos_latlon[node]
-        for node in airport_network.nodes()
-        if node in pos_latlon
-    }
+    pos_latlon = {node: pos_latlon[node] for node in airport_network.nodes() if node in pos_latlon}
     node_sizes = [degrees.get(node, 0) * 5 for node in nodes_list]
     _draw_airport_edges(ax, airport_network, pos_latlon, alpha=0.05, linewidth=0.5)
     pos_projected = _project_node_positions(pos_latlon, ax)
@@ -799,9 +787,13 @@ def plot_prediction_scatter_grid(
         constrained_layout=True,
     )
     fig.suptitle("US Airport Network: Actual vs. Predicted Delay", fontsize=18)
-    axes_flat = [cast(Any, axes)] if model_count == 1 else cast(
-        list[Any],
-        np.asarray(axes, dtype=object).ravel().tolist(),
+    axes_flat = (
+        [cast(Any, axes)]
+        if model_count == 1
+        else cast(
+            list[Any],
+            np.asarray(axes, dtype=object).ravel().tolist(),
+        )
     )
     plot_min = float(np.min(y_true))
     plot_max = float(np.max(y_true))
@@ -822,10 +814,7 @@ def plot_prediction_scatter_grid(
         ax.set_xlim(plot_min, plot_max)
         ax.set_ylim(plot_min, plot_max)
         ax.set_aspect("equal", "box")
-        ax.set_title(
-            f"{name_to_title[name]}\n"
-            f"RMSE: {results[name]['RMSE']:.3f} | R2: {results[name]['R2']:.3f}"
-        )
+        ax.set_title(f"{name_to_title[name]}\n" f"RMSE: {results[name]['RMSE']:.3f} | R2: {results[name]['R2']:.3f}")
         if index >= (model_count - ncols):
             ax.set_xlabel("Actual Delay")
         if index % ncols == 0:
