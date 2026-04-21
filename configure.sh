@@ -1,8 +1,13 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-poetry install --with dev --no-root
-REPO_DIR=$(git rev-parse --show-toplevel)
-PYTHONPATH="${REPO_DIR}/src${PYTHONPATH:+:${PYTHONPATH}}"
-export REPO_DIR
-export PYTHONPATH
-$(eval poetry env activate)
+set -euo pipefail
+
+poetry install --with dev
+
+cat <<'EOF'
+Environment is ready.
+
+Use one of:
+  poetry run <command>
+  poetry shell
+EOF

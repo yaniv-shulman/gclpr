@@ -12,8 +12,8 @@ from sklearn.base import BaseEstimator, RegressorMixin
 
 matplotlib.use("Agg")
 
-from grclpr.experiments.california_housing_exp1 import california_housing_exp_1_cv as exp1_cv
-from grclpr.experiments.california_housing_exp1 import california_housling_exp_1 as exp1_utils
+from gclpr.experiments.california_housing_exp1 import california_housing_exp_1_cv as exp1_cv
+from gclpr.experiments.california_housing_exp1 import california_housling_exp_1 as exp1_utils
 
 
 class FakeSearch:

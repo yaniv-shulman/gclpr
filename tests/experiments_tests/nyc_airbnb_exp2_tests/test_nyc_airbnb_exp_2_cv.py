@@ -12,8 +12,8 @@ from sklearn.base import BaseEstimator, RegressorMixin
 
 matplotlib.use("Agg")
 
-from grclpr.experiments.nyc_airbnb_exp2 import nyc_airbnb as exp2_utils
-from grclpr.experiments.nyc_airbnb_exp2 import nyc_airbnb_exp_2_cv as exp2_cv
+from gclpr.experiments.nyc_airbnb_exp2 import nyc_airbnb as exp2_utils
+from gclpr.experiments.nyc_airbnb_exp2 import nyc_airbnb_exp_2_cv as exp2_cv
 
 
 class FakeSearch:

@@ -19,7 +19,7 @@ from rsklpr.kernels import tricube_normalized_metric
 from sklearn.metrics import make_scorer, mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import TimeSeriesSplit
 
-from grclpr.experiments.hungary_chickenpox_exp4.hungary_chickenpox import (
+from gclpr.experiments.hungary_chickenpox_exp4.hungary_chickenpox import (
     build_sample_idx_to_node_id_map,
     cv_graph,
     cv_knn,

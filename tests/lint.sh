@@ -1,25 +1,33 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -euo pipefail
 
 GCLPR_REPO_DIR=$(git rev-parse --show-toplevel)
+TARGETS=("$GCLPR_REPO_DIR/src" "$GCLPR_REPO_DIR/tests")
+mapfile -t PY_FILES < <(find "${TARGETS[@]}" -type f -name "*.py" | sort)
 
 while getopts ":f" option; do
-   case $option in
-      f) # display Help
-         FIX=1
-         ;;
-     \?) # Invalid option
-         echo "Error: Invalid option, use -f to fix fixable reported problems"
-         exit;;
-   esac
+    case $option in
+        f)
+            FIX=1
+            ;;
+        \?)
+            echo "Error: Invalid option, use -f to apply autofixes where supported"
+            exit 1
+            ;;
+    esac
 done
 
-
-if [ -z "$FIX" ]; then
-    python -m black --check "$GCLPR_REPO_DIR"
-    python -m ruff check "$GCLPR_REPO_DIR"
+if [ -z "${FIX:-}" ]; then
+    for file in "${PY_FILES[@]}"; do
+        poetry run black --check "$file"
+    done
+    poetry run ruff check "${TARGETS[@]}"
 else
-    python -m black "$GCLPR_REPO_DIR"
-    python -m ruff check "$GCLPR_REPO_DIR" --fix
+    for file in "${PY_FILES[@]}"; do
+        poetry run black "$file"
+    done
+    poetry run ruff check "${TARGETS[@]}" --fix
 fi
 
-python -m mypy "$GCLPR_REPO_DIR"
+poetry run mypy "${TARGETS[@]}"

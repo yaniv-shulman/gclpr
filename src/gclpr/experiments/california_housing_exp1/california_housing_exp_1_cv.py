@@ -24,7 +24,7 @@ from sklearn.metrics import (
 from sklearn.model_selection import KFold, train_test_split
 from sklearn.preprocessing import StandardScaler
 
-from grclpr.experiments.california_housing_exp1.california_housling_exp_1 import (
+from gclpr.experiments.california_housing_exp1.california_housling_exp_1 import (
     cv_gclpr_geo,
     cv_knn,
     cv_rsklpr,

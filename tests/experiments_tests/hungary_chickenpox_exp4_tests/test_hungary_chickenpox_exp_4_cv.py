@@ -13,10 +13,10 @@ import pandas as pd
 import pytest
 from sklearn.base import BaseEstimator, RegressorMixin
 
-from grclpr.experiments.hungary_chickenpox_exp4 import (
+from gclpr.experiments.hungary_chickenpox_exp4 import (
     hungary_chickenpox as exp4_utils,
 )
-from grclpr.experiments.hungary_chickenpox_exp4 import (
+from gclpr.experiments.hungary_chickenpox_exp4 import (
     hungary_chickenpox_exp_4_cv as exp4_cv,
 )
 

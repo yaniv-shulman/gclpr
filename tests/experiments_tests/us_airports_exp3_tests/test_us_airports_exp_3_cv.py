@@ -9,8 +9,8 @@ import pandas as pd
 import pytest
 from sklearn.base import BaseEstimator, RegressorMixin
 
-from grclpr.experiments.us_airports_exp3 import us_airports_exp_3_cv as exp3_cv
-from grclpr.experiments.us_airports_exp3 import us_airports_network as exp3_utils
+from gclpr.experiments.us_airports_exp3 import us_airports_exp_3_cv as exp3_cv
+from gclpr.experiments.us_airports_exp3 import us_airports_network as exp3_utils
 
 
 class FakeSearch:

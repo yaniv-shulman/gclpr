@@ -19,7 +19,7 @@ from rsklpr.kernels import tricube_normalized_metric
 from sklearn.metrics import make_scorer, mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 
-from grclpr.experiments.us_airports_exp3.us_airports_network import (
+from gclpr.experiments.us_airports_exp3.us_airports_network import (
     build_original_idx_to_node_map,
     cv_graph,
     cv_knn,

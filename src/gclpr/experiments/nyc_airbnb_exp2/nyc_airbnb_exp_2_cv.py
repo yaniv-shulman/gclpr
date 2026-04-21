@@ -24,7 +24,7 @@ from sklearn.metrics import (
 from sklearn.model_selection import KFold, train_test_split
 from sklearn.preprocessing import StandardScaler
 
-from grclpr.experiments.nyc_airbnb_exp2.nyc_airbnb import (
+from gclpr.experiments.nyc_airbnb_exp2.nyc_airbnb import (
     calculate_unified_index_to_station_map,
     cv_knn,
     cv_rsklpr,
