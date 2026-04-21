@@ -281,10 +281,11 @@ In summary, GC-LPR can be viewed as a decomposed local-polynomial framework rela
 \section{Theoretical Properties}
 \label{sec:theory}
 
-We study the estimator in \eqref{eq:gc_lpr_loss} at a fixed interior query point \(x^\star\in\mathcal{X}\).
-Write \(z=\psi_0(x^\star)\in\mathbb{R}^d\) and \(x^\star=(z,c^\star)\). When discussing population quantities,
+We study the estimator in \eqref{eq:gc_lpr_loss} at a fixed query point \(x^\star\in\mathcal{X}\).
+Write \(z=\psi_0(x^\star)\in\mathbb{R}^d\) and \(x^\star=(z,c^\star)\), and assume that \(z\) is an interior point of the support of \(Z\). When discussing population quantities,
 we use the regular conditional distribution of \((X,Y)\) given \(Z=\psi_0(X)\), and write
 \(\mathbb{E}[\cdot\mid Z=u]\) for conditional expectations.
+Throughout this section we assume i.i.d.\ sampling of \(\{(X_i,Y_i)\}_{i=1}^n\). Consequently, the asymptotic results below do not cover graph-dependent or graph-temporal dependence structures such as those used in Experiments~3 and~4; those experiments should therefore be read as empirical demonstrations outside the scope of the present theory.
 Throughout this section, the context bandwidths \(\eta_1,\ldots,\eta_J\) are treated as fixed while the Euclidean bandwidth matrix \(H\) shrinks. Accordingly, the estimand of the asymptotic analysis is the induced context-smoothed target \(m_W(\cdot;x^\star)\); consistency for the point target \(m_{c^\star}(z)\) would require a separate theorem with \(\eta_j\to0\) and compatible joint rate conditions.
 
 For clarity, recall the context weight and its conditional mean
@@ -337,7 +338,7 @@ the induced population target is the context-smoothed mean \(m_W(z;x^\star)\); t
 
 \begin{assumption}[Data, design, and local smoothness]
 \label{ass:data}
-Let \(Z=\psi_0(X)\in\mathbb{R}^d\) admit a density \(f_Z\) that is continuous in a neighborhood of \(z\),
+Let \(\{(X_i,Y_i)\}_{i=1}^n\) be i.i.d.\ copies of \((X,Y)\). Let \(Z=\psi_0(X)\in\mathbb{R}^d\) admit a density \(f_Z\) that is continuous in a neighborhood of \(z\),
 with \(f_Z(z)>0\). Assume the regression model
 \[
 Y=m_C(Z)+\varepsilon,\qquad \mathbb{E}[\varepsilon\mid Z,C]=0,\qquad \Var(\varepsilon\mid Z,C)=\sigma^2(Z,C).
@@ -351,45 +352,51 @@ locally, this reduces to \(m_{c^\star}(\cdot)\in C^{p+1}\) near \(z\).
 \label{ass:k0}
 \(K_0:\mathbb{R}^d\to[0,\infty)\) is even, integrable with finite moments up to order \(p+2\), and
 \(\int K_0(t)\,dt=1\). The bandwidth \(H\) is positive definite with \(\|H\|\to0\) and \(n|H|\to\infty\).
-Moreover, the kernel moment matrix
+Moreover, the kernel moment matrices
 \[
-M_0\coloneqq \int r_p(t)\,r_p(t)^\top K_0(t)\,dt
+M_0\coloneqq \int r_p(t)\,r_p(t)^\top K_0(t)\,dt,
+\qquad
+\Omega_0\coloneqq \int r_p(t)\,r_p(t)^\top K_0(t)^2\,dt
 \]
-is nonsingular.
+have finite entries, and \(M_0\) is nonsingular.
 \end{assumption}
 
-\begin{assumption}[Context factors]
+\begin{assumption}[Context factors and effective-weight regularity]
 \label{ass:context}
 For \(j\ge 1\), the context factor \(K_j(\cdot,\cdot;\eta_j)\) is symmetric and nonnegative, and is
 uniformly bounded above: \(0\le K_j(\cdot,\cdot;\eta_j)\le \bar K_j<\infty\). (Equivalently, one may replace each
 factor by \(K_j/\bar K_j\in[0,1]\), which only rescales the weighted least-squares objective by a constant and does
 not change its minimizer.)
 
-Fix \(x^\star=(z,c^\star)\). Assume the conditional mean weight \(\gamma_{x^\star}(u)=\mathbb{E}[W(x^\star,X)\mid Z=u]\)
-satisfies one of the following local regularity conditions in a neighborhood of \(z\):
-\begin{enumerate}[label=(\alph*)]
-    \item \textbf{Continuous contexts:} \(\gamma_{x^\star}(u)\) is locally Lipschitz at \(z\); i.e., there exist
-    constants \(L<\infty\) and \(\delta>0\) such that
-    \[
-    |\gamma_{x^\star}(u)-\gamma_{x^\star}(z)| \le L\|u-z\| \quad \text{whenever } \|u-z\|<\delta.
-    \]
-    \item \textbf{Discrete/partitioned contexts:} \(\gamma_{x^\star}(u)\) is locally constant in \(u\) near \(z\).
-\end{enumerate}
+Fix \(x^\star=(z,c^\star)\). Assume the conditional mean weight
+\[
+\gamma_{x^\star}(u)=\mathbb{E}[W(x^\star,X)\mid Z=u]
+\]
+is locally Lipschitz at \(z\); i.e., there exist constants \(L<\infty\) and \(\delta>0\) such that
+\[
+|\gamma_{x^\star}(u)-\gamma_{x^\star}(z)| \le L\|u-z\| \quad \text{whenever } \|u-z\|<\delta.
+\]
+This regularity requirement is imposed on the effective conditional mean weight \(\gamma_{x^\star}\) itself, regardless of whether the underlying context variables are continuous, discrete, or mixed. Locally constant cases are included as a special case.
 \end{assumption}
 
 \begin{assumption}[Positivity]
 \label{ass:positivity}
-Let \(\phi_1(x^\star)\coloneqq \mathbb{E}[W(x^\star,X)\mid Z=z]=\gamma_{x^\star}(z)\) and
-\(\phi_2(x^\star)\coloneqq \mathbb{E}[W(x^\star,X)^2\mid Z=z]\). Assume
-\(0<\underline{\phi}\le \phi_1(x^\star)\) and \(\phi_2(x^\star)<\infty\).
+Let \(\phi_1(x^\star)\coloneqq \mathbb{E}[W(x^\star,X)\mid Z=z]=\gamma_{x^\star}(z)\). Assume
+\(0<\underline{\phi}\le \phi_1(x^\star)\).
 \end{assumption}
 Combined with Assumptions~\ref{ass:data} and \ref{ass:context}, this pointwise positivity implies that, after possibly shrinking the neighborhood of \(z\), both \(\gamma_{x^\star}(u)\) and the effective design density \(q_{x^\star}(u)\coloneqq f_Z(u)\gamma_{x^\star}(u)\) are bounded away from zero near \(z\).
 
-\begin{assumption}[Effective residual second moment]
+\begin{assumption}[Effective residual second-moment regularity]
 \label{ass:variance_moment}
-Fix \(x^\star=(z,c^\star)\). Assume
+Fix \(x^\star=(z,c^\star)\), and define
 \[
-\mathbb{E}\!\left[\,W(x^\star,X)^2\,\big(Y-m_W(Z;x^\star)\big)^2\mid Z=z\,\right]<\infty.
+\nu_{x^\star}(u)\coloneqq
+\mathbb{E}\!\left[\,W(x^\star,X)^2\,\big(Y-m_W(u;x^\star)\big)^2\mid Z=u\,\right].
+\]
+Assume \(\nu_{x^\star}\) is locally bounded in a neighborhood of \(z\) and continuous at \(z\). Equivalently, on the event \(\{Z=u\}\), one may write
+\[
+\nu_{x^\star}(u)=
+\mathbb{E}\!\left[\,W(x^\star,X)^2\,\big(Y-m_W(Z;x^\star)\big)^2\mid Z=u\,\right].
 \]
 \end{assumption}
 
@@ -459,35 +466,38 @@ Proof in~\ref{app:proof_bias}.
 
 \begin{proposition}[Asymptotic variance]
 \label{prop:variance}
-Under Assumptions \ref{ass:data}--\ref{ass:variance_moment}, for interior \(x\),
+Under Assumptions \ref{ass:data}--\ref{ass:variance_moment}, fix \(x^\star=(z,c^\star)\) with \(z=\psi_0(x^\star)\) an interior point of the support of \(Z\). Then
 \[
-\mathrm{Var}\{\hat m(x)\}\ \approx\ \frac{1}{n|H|}\,\frac{1}{f_Z(z)}\;
-e_1^\top M_0^{-1}\,\Omega_0\,M_0^{-1} e_1\ \times\ \Phi(x),
+\mathrm{Var}\{\hat m(x^\star)\}
+=
+\frac{1}{n|H|}\,\frac{1}{f_Z(z)}\;
+e_1^\top M_0^{-1}\,\Omega_0\,M_0^{-1} e_1\ \times\ \Phi(x^\star)
+\;+\;o\!\big((n|H|)^{-1}\big),
 \]
-where \(M_0\) and \(\Omega_0\) are the standard moment matrices for \(K_0\), and
+where \(M_0\) and \(\Omega_0\) are the kernel moment matrices from Assumption~\ref{ass:k0}, and
 \[
-\Phi(x)=\frac{\mathbb{E}\big[\,W(x,X)^2\,\big(Y-m_W(Z;x)\big)^2\mid Z=z\,\big]}
-{\mathbb{E}\big[\,W(x,X)\mid Z=z\,\big]^2}
+\Phi(x^\star)=\frac{\mathbb{E}\big[\,W(x^\star,X)^2\,\big(Y-m_W(Z;x^\star)\big)^2\mid Z=z\,\big]}
+{\mathbb{E}\big[\,W(x^\star,X)\mid Z=z\,\big]^2}
 \]
 is the effective residual factor. Under the model \(Y=m_C(Z)+\varepsilon\) with \(\mathbb{E}[\varepsilon\mid Z,C]=0\),
 \[
-\Phi(x)=
-\frac{\mathbb{E}\big[\,W(x,X)^2\big\{\sigma^2(Z,C)+\big(m_C(Z)-m_W(Z;x)\big)^2\big\}\mid Z=z\,\big]}
-{\mathbb{E}\big[\,W(x,X)\mid Z=z\,\big]^2}.
+\Phi(x^\star)=
+\frac{\mathbb{E}\big[\,W(x^\star,X)^2\big\{\sigma^2(z,C)+\big(m_C(z)-m_W(z;x^\star)\big)^2\big\}\mid Z=z\,\big]}
+{\mathbb{E}\big[\,W(x^\star,X)\mid Z=z\,\big]^2}.
 \]
 \end{proposition}
 
-Proof in~\ref{app:proof_variance}. The effective residual factor \(\Phi(x)\) quantifies the statistical cost of context isolation and context mixing:
+Proof in~\ref{app:proof_variance}. The effective residual factor \(\Phi(x^\star)\) quantifies the statistical cost of context isolation and context mixing:
 \begin{itemize}
     \item \textbf{Recovery of standard LPR:} If \(W\equiv 1\) (no context weights) and errors are
-    homoskedastic and the model reduces to \(Y=m(Z)+\varepsilon\), then \(\Phi(x)=\sigma^2\), recovering the standard LPR variance expression.
-    \item \textbf{Context-mixing variation:} Even when \(\sigma^2(Z,C)=0\), \(\Phi(x)\) can remain positive if multiple contexts contribute nontrivially to the target \(m_W(\cdot;x)\) at a given \(Z=z\), through the term \(\big(m_C(Z)-m_W(Z;x)\big)^2\).
+    homoskedastic and the model reduces to \(Y=m(Z)+\varepsilon\), then \(\Phi(x^\star)=\sigma^2\), recovering the standard LPR variance expression.
+    \item \textbf{Context-mixing variation:} Even when \(\sigma^2(z,C)=0\), \(\Phi(x^\star)\) can remain positive if multiple contexts contribute nontrivially to the target \(m_W(\cdot;x^\star)\) at a given \(Z=z\), through the term \(\big(m_C(z)-m_W(z;x^\star)\big)^2\).
     \item \textbf{Weight-induced inflation:} When context weights are sparse or highly variable (e.g., focusing on a small manifold slice), the squared-weight numerator relative to \(\mathbb{E}[W\mid Z=z]^2\) can inflate variance, especially when the effective residual variation is roughly homogeneous or only weakly related to the weights. This reflects the reduction in effective sample size caused by the context filter. GC-LPR therefore does not eliminate the curse of dimensionality; rather, it trades model bias against variance. While the method allows for complex dependencies, a low-variance estimate still requires a sufficiently dense sample in the joint $(Z,C)$ space.
 \end{itemize}
 
 \begin{corollary}[Consistency for the context-smoothed target]
 \label{cor:mw_consistency}
-Under Assumptions \ref{ass:data}--\ref{ass:variance_moment}, for interior \(x^\star\),
+Under Assumptions \ref{ass:data}--\ref{ass:variance_moment}, fix \(x^\star\) such that \(z=\psi_0(x^\star)\) is an interior point of the support of \(Z\). Then
 \[
 \mathbb{E}\!\left[\big(\hat m(x^\star)-m_W(z;x^\star)\big)^2\right]
 =
@@ -504,7 +514,7 @@ Consequently, if \(\|H\|\to0\) and \(n|H|\to\infty\), then
 Proposition~\ref{prop:bias} gives \(\mathbb{E}[\hat m(x^\star)]-m_W(z;x^\star)=O(\|H\|^{p+1})\), while Proposition~\ref{prop:variance} and Assumptions~\ref{ass:positivity}--\ref{ass:variance_moment} give \(\Var\{\hat m(x^\star)\}=O((n|H|)^{-1})\); combine these with \(\mathbb{E}[(\hat m-m_W)^2]=\Var(\hat m)+(\mathbb{E}[\hat m]-m_W)^2\).
 \end{proof}
 
-Taken together, the results above give a pointwise-in-\(x^\star\) asymptotic theory for the bandwidth-matrix formulation of GC-LPR around the induced target \(m_W(z;x^\star)\). Under \(\|H\|\to0\) and \(n|H|\to\infty\), Corollary~\ref{cor:mw_consistency} yields consistency for \(m_W(z;x^\star)\), but not, by itself, for the context-specific mean \(m_{c^\star}(z)\); the latter would require shrinking context bandwidths and regularity across contexts. The theory also does not cover the adaptive \(k\)-nearest-neighbor implementation used in the experiments below, nor the additional response-based robustness factor used in GRC-LPR. Extending the analysis to those settings is left for future work.
+Taken together, the results above give a pointwise-in-\(x^\star\) i.i.d.\ asymptotic theory for the bandwidth-matrix formulation of GC-LPR around the induced target \(m_W(z;x^\star)\). Under \(\|H\|\to0\) and \(n|H|\to\infty\), Corollary~\ref{cor:mw_consistency} yields consistency for \(m_W(z;x^\star)\), but not, by itself, for the context-specific mean \(m_{c^\star}(z)\); the latter would require shrinking context bandwidths and regularity across contexts. The theory also does not cover the adaptive \(k\)-nearest-neighbor implementation used in the experiments below, nor the additional response-based robustness factor used in GRC-LPR. Extending the analysis to those settings is left for future work.
 
 \section{Applications and Experiments}
 \label{s:Experiments}
@@ -922,7 +932,7 @@ is, up to an additive constant independent of \(\beta\), exactly the standard lo
 u\mapsto f_Z(u)\,\gamma_{x^\star}(u).
 \]
 
-Under Assumptions~\ref{ass:data}--\ref{ass:positivity}, this induced problem satisfies the usual local regularity conditions near \(z\): \(m_W(\cdot;x^\star)\in C^{p+1}\) by Assumption~\ref{ass:data}, \(f_Z\) is continuous with \(f_Z(z)>0\), \(\gamma_{x^\star}(z)=\phi_1(x^\star)>0\) by Assumption~\ref{ass:positivity}, and \(\gamma_{x^\star}\) is locally Lipschitz or locally constant near \(z\) by Assumption~\ref{ass:context}. Therefore the standard local polynomial bias expansion applies to the intercept estimator for this effective problem (see, e.g., \cite{fan1996local,loader1999local}), yielding
+Under Assumptions~\ref{ass:data}--\ref{ass:positivity}, this induced problem satisfies the usual local regularity conditions near \(z\): \(m_W(\cdot;x^\star)\in C^{p+1}\) by Assumption~\ref{ass:data}, \(f_Z\) is continuous with \(f_Z(z)>0\), \(\gamma_{x^\star}(z)=\phi_1(x^\star)>0\) by Assumption~\ref{ass:positivity}, and \(\gamma_{x^\star}\) is locally Lipschitz near \(z\) by Assumption~\ref{ass:context}. Therefore the standard local polynomial bias expansion applies to the intercept estimator for this effective problem (see, e.g., \cite{fan1996local,loader1999local}), yielding
 \[
 \mathbb{E}\big[\hat m(x^\star)\big]-m_W(z;x^\star)
 =O(\|H\|^{p+1}).
@@ -949,39 +959,73 @@ If the context kernels enforce exact selection of the context cell containing \(
 \subsection{Proof of Proposition \ref{prop:variance} (Asymptotic variance)}
 \label{app:proof_variance}
 \begin{proof}
-By Lemma~\ref{lem:weighted_target}, the variance analysis is that of standard local polynomial regression for the target \(m_W(\cdot;x)\) under the effective design density \(u\mapsto f_Z(u)\gamma_x(u)\). Define the effective residual
+Fix \(x^\star=(z,c^\star)\). By Lemma~\ref{lem:weighted_target}, the variance analysis is that of standard local polynomial regression for the target \(m_W(\cdot;x^\star)\) under the effective design density
 \[
-\xi_x \coloneqq Y-m_W(Z;x).
+q_{x^\star}(u)\coloneqq f_Z(u)\gamma_{x^\star}(u).
+\]
+Define the effective residual and its weighted conditional second moment:
+\[
+\xi_{x^\star} \coloneqq Y-m_W(Z;x^\star),
+\qquad
+\nu_{x^\star}(u)\coloneqq \mathbb{E}\!\left[W(x^\star,X)^2\,\xi_{x^\star}^2\mid Z=u\right].
 \]
 By Lemma~\ref{lem:mw_target},
 \[
-\mathbb{E}\!\left[\xi_x\,W(x,X)\mid Z=u\right]=0,
+\mathbb{E}\!\left[\xi_{x^\star}\,W(x^\star,X)\mid Z=u\right]=0,
 \]
-so the standard local polynomial covariance calculation for the effective problem yields
+and Assumptions~\ref{ass:data}--\ref{ass:variance_moment} imply that, in a neighborhood of \(z\), the effective design density \(q_{x^\star}\) is continuous and bounded away from zero, while \(\nu_{x^\star}\) is locally bounded and continuous at \(z\).
+
+Write \(\xi_{i,x^\star}\coloneqq Y_i-m_W(Z_i;x^\star)\) and decompose the score term as
 \[
-\Sigma \approx \frac{1}{n|H|} f_Z(z)\,\mathbb{E}\!\left[W(x,X)^2\,\xi_x^2\mid Z=z\right] \underbrace{\int r_p(t) r_p(t)^\top K_0(t)^2 dt}_{\Omega_0}.
+T_n^\xi(x^\star)\coloneqq \frac{1}{n|H|}\sum_{i=1}^n K_0(t_i)\,W(x^\star,X_i)\,r_p(t_i)\,\xi_{i,x^\star}.
 \]
-Meanwhile the local moment matrix satisfies
+By the same change-of-variables and dominated-convergence arguments as in standard LPR (using the continuity of \(q_{x^\star}\) and \(\nu_{x^\star}\), together with the moment conditions in Assumption~\ref{ass:k0}), the local moment matrix from Appendix~A.1 satisfies
 \[
-S_n \to \phi_1(x)\,f_Z(z)\,M_0,
-\qquad
-\phi_1(x)=\mathbb{E}[W(x,X)\mid Z=z].
+S_n \xrightarrow{P} q_{x^\star}(z)\,M_0,
 \]
-\begin{align*}
-\Var(\hat{\vartheta}(x)) &\approx \frac{1}{n|H|} \frac{f_Z(z)\,\E[W(x,X)^2\,\xi_x^2 \mid Z=z]}{(\phi_1(x) f_Z(z))^2} M_0^{-1} \Omega_0 M_0^{-1} \\
-&= \frac{1}{n|H| f_Z(z)} \left( M_0^{-1} \Omega_0 M_0^{-1} \right) \times \underbrace{\frac{\E[W(x,X)^2\,\big(Y-m_W(Z;x)\big)^2 \mid Z=z]}{(\E[W(x,X) \mid Z=z])^2}}_{\Phi(x)}.
-\end{align*}
-Under the model \(Y=m_C(Z)+\varepsilon\),
+and independence of \(\{(X_i,Y_i)\}_{i=1}^n\) gives
 \[
-\xi_x = \big(m_C(Z)-m_W(Z;x)\big)+\varepsilon,
+\Var\!\big(T_n^\xi(x^\star)\big)
+=
+\frac{1}{n|H|}\,f_Z(z)\,\nu_{x^\star}(z)\,\Omega_0
+\;+\;o\!\big((n|H|)^{-1}\big).
+\]
+Since the centered stochastic part of \(\hat\vartheta(x^\star)\) is \(S_n^{-1}T_n^\xi(x^\star)\), Slutsky's theorem yields
+\[
+\Var(\hat{\vartheta}(x^\star))
+=
+\frac{1}{n|H|}\,
+\frac{\nu_{x^\star}(z)}{f_Z(z)\gamma_{x^\star}(z)^2}\,
+M_0^{-1}\Omega_0M_0^{-1}
+ \;+\; o\!\big((n|H|)^{-1}\big).
+\]
+Taking the intercept component gives
+\[
+\Var\{\hat m(x^\star)\}
+=
+\frac{1}{n|H|}\,
+\frac{\nu_{x^\star}(z)}{f_Z(z)\gamma_{x^\star}(z)^2}\,
+e_1^\top M_0^{-1}\Omega_0M_0^{-1}e_1
+\;+\; o\!\big((n|H|)^{-1}\big).
+\]
+Since \(\gamma_{x^\star}(z)=\mathbb{E}[W(x^\star,X)\mid Z=z]\), this is exactly the displayed formula with
+\[
+\Phi(x^\star)
+=
+\frac{\mathbb{E}\!\left[W(x^\star,X)^2\,\big(Y-m_W(Z;x^\star)\big)^2\mid Z=z\right]}
+{\mathbb{E}[W(x^\star,X)\mid Z=z]^2}.
+\]
+Under the model \(Y=m_C(Z)+\varepsilon\), conditioning on \(Z=z\) gives
+\[
+\xi_{x^\star} = \big(m_C(z)-m_W(z;x^\star)\big)+\varepsilon,
 \]
 so
 \[
-\mathbb{E}\!\left[W(x,X)^2\,\xi_x^2\mid Z=z\right]
+\mathbb{E}\!\left[W(x^\star,X)^2\,\xi_{x^\star}^2\mid Z=z\right]
 =
-\mathbb{E}\!\left[W(x,X)^2\big\{\sigma^2(Z,C)+\big(m_C(Z)-m_W(Z;x)\big)^2\big\}\mid Z=z\right],
+\mathbb{E}\!\left[W(x^\star,X)^2\big\{\sigma^2(z,C)+\big(m_C(z)-m_W(z;x^\star)\big)^2\big\}\mid Z=z\right],
 \]
-because the cross term vanishes after conditioning on \((Z,C)\) and using \(\mathbb{E}[\varepsilon\mid Z,C]=0\). This gives the stated form of \(\Phi(x)\).
+because the cross term vanishes after conditioning on \((Z,C)\) and using \(\mathbb{E}[\varepsilon\mid Z,C]=0\). This gives the stated form of \(\Phi(x^\star)\).
 
 \end{proof}
 
