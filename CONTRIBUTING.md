@@ -25,7 +25,6 @@ poetry install --with dev
 - Tests live under `tests/experiments_tests/`.
 - Use type annotations and Google-style docstrings for maintained experiment code.
 - Keep the public package name as `gclpr`.
-- Do not reintroduce notebooks as a required part of the execution workflow.
 
 ## Data Policy
 

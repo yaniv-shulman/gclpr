@@ -110,8 +110,5 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 addopts = "-ra -q --strict-markers"
-markers = [
-    "slow: tests that take a long time to run",
-]
 minversion = "6.0"
 testpaths = ["tests"]
