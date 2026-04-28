@@ -20,6 +20,7 @@ class FakeSearch:
     """Minimal fitted search object for tests."""
 
     def __init__(self, estimator: BaseEstimator, best_params: dict[str, object]) -> None:
+        """Store the fitted-estimator attributes expected by the runner."""
         self.best_estimator_ = estimator
         self.best_params_ = best_params
         self.best_score_ = -0.123
@@ -29,13 +30,16 @@ class OffsetEstimator(BaseEstimator, RegressorMixin):
     """Simple estimator used to make fold-level behavior deterministic."""
 
     def __init__(self, offset: float = 0.0) -> None:
+        """Persist the deterministic prediction offset."""
         self.offset = offset
 
     def fit(self, x: np.ndarray, y: np.ndarray) -> "OffsetEstimator":
+        """Record the training-target mean used during prediction."""
         self.mean_ = float(np.mean(y))
         return self
 
     def predict(self, x: np.ndarray) -> np.ndarray:
+        """Predict a constant offset from the memorized training mean."""
         return np.full(x.shape[0], self.mean_ + self.offset, dtype=float)
 
 

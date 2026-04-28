@@ -25,6 +25,7 @@ class FakeSearch:
     """Minimal search object compatible with the runner expectations."""
 
     def __init__(self, estimator: BaseEstimator, params: dict[str, Any]) -> None:
+        """Store the fitted-estimator attributes expected by the runner."""
         self.best_estimator_ = estimator
         self.best_params_ = params
         self.best_score_ = -1.0
@@ -34,13 +35,16 @@ class OffsetEstimator(BaseEstimator, RegressorMixin):
     """Estimator that predicts the first feature plus an offset."""
 
     def __init__(self, offset: float = 0.0) -> None:
+        """Persist the deterministic prediction offset."""
         self.offset = offset
 
     def fit(self, x: np.ndarray, y: np.ndarray) -> "OffsetEstimator":
+        """Record that the estimator saw a training split."""
         self.was_fit_ = True
         return self
 
     def predict(self, x: np.ndarray) -> np.ndarray:
+        """Return the first feature shifted by the configured offset."""
         if x.ndim != 2:
             raise ValueError("expected 2D features")
         return x[:, 0].astype(float) + self.offset
