@@ -1,0 +1,114 @@
+[project]
+name = "gclpr"
+version = "0.1.0"
+description = "Reproducible experiments and paper artifacts for generalized context-aware local polynomial regression"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+authors = [
+    { name = "Yaniv Shulman", email = "yaniv@shulman.info" },
+]
+keywords = [
+    "statistics",
+    "nonparametric regression",
+    "local polynomial regression",
+    "graph regression",
+    "geospatial modeling",
+    "machine learning",
+]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+dependencies = [
+    "rsklpr>=2.0.0,<3.0.0",
+    "matplotlib>=3.10.7,<4.0.0",
+    "networkx>=3.5.0,<4.0.0",
+    "notebook>=7.4.7,<8.0.0",
+    "scikit-learn>=1.7.2,<2.0.0",
+    "numpy>=2.3.4,<3.0.0",
+    "pandas>=2.3.3,<3.0.0",
+    "joblib>=1.5.2,<2.0.0",
+    "cartopy>=0.25.0,<0.26.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yaniv-shulman/gclpr"
+Repository = "https://github.com/yaniv-shulman/gclpr"
+
+[tool.poetry]
+packages = [
+    { include = "gclpr", from = "src" },
+]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^9.0.3"
+black = { extras = ["jupyter"], version = "^26.3.1" }
+scipy-stubs = "^1.17.1.4"
+pytest-xdist = "^3.8.0"
+pandas-stubs = "^3.0.0.260204"
+mypy = "^1.20.1"
+ruff = "^0.15.10"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 120
+target-version = ["py312"]
+
+[tool.ruff]
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".idea",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pycache__",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "paper",
+    "venv",
+]
+line-length = 120
+indent-width = 4
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "SIM"]
+ignore = []
+fixable = ["ALL"]
+unfixable = []
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+addopts = "-ra -q --strict-markers"
+minversion = "6.0"
+testpaths = ["tests"]
