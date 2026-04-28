@@ -1,3 +1,5 @@
+![Tests](https://github.com/yaniv-shulman/gclpr/actions/workflows/linting_and_tests.yml/badge.svg?branch=main)
+
 # GCLPR
 
 `gclpr` contains the experiment code, tests, and paper sources for the GC-LPR study:
