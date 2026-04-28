@@ -48,7 +48,7 @@ out/
 Install the project and development dependencies with Poetry:
 
 ```bash
-poetry install --with dev
+poetry install --with dev --no-root
 ```
 
 You can then either:

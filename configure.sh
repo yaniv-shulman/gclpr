@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-poetry install --with dev
+poetry install --with dev --no-root
 
 cat <<'EOF'
 Environment is ready.
