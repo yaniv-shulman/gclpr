@@ -6,7 +6,27 @@
 
 > Generalized Context-Aware Local Polynomial Regression
 
-This repository is organized around reproducible experiment runners rather than notebooks. The maintained entry points live under `src/gclpr/experiments/`, and the generated outputs used in the paper are written to `out/experiment_*`.
+GC-LPR extends local polynomial regression to settings where observations carry structured context, such as geospatial neighborhoods, transit networks, flight graphs, or spatiotemporal disease signals. The method uses decomposed context-aware kernels to combine standard feature-space locality with context-derived relationships, so smoothing adapts to both covariate similarity and the surrounding graph or spatial structure. A concise overview is available in the paper [Generalized Local Polynomial Regression with Decomposed Context-Aware Kernels](https://arxiv.org/abs/2604.25237).
+
+This repository is organized around reproducible experiment runners. The maintained entry points live under `src/gclpr/experiments/`, and the generated outputs used in the paper are written to `out/experiment_*`.
+
+## Paper
+
+Paper: [Generalized Local Polynomial Regression with Decomposed Context-Aware Kernels](https://arxiv.org/abs/2604.25237)
+
+Citation:
+
+```bibtex
+@misc{shulman2026generalizedlocalpolynomialregression,
+      title={Generalized Local Polynomial Regression with Decomposed Context-Aware Kernels},
+      author={Yaniv Shulman},
+      year={2026},
+      eprint={2604.25237},
+      archivePrefix={arXiv},
+      primaryClass={stat.ME},
+      url={https://arxiv.org/abs/2604.25237},
+}
+```
 
 ## Scope
 
