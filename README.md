@@ -1,4 +1,5 @@
-![Tests](https://github.com/yaniv-shulman/gclpr/actions/workflows/linting_and_tests.yml/badge.svg?branch=main)
+
+![Tests](https://github.com/yaniv-shulman/gclpr/actions/workflows/linting_and_tests.yml/badge.svg?branch=main) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 # GCLPR
 
