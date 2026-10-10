@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the paper listed below."
+type: software
+title: "GC-LPR: Reproducible experiments and paper artifacts"
+authors:
+  - family-names: Shulman
+    given-names: Yaniv
+repository-code: "https://github.com/yaniv-shulman/gclpr"
+license: MIT
+preferred-citation:
+  type: article
+  title: "Generalized Local Polynomial Regression with Decomposed Context-Aware Kernels"
+  authors:
+    - family-names: Shulman
+      given-names: Yaniv
+  year: 2026
+  journal: arXiv
+  doi: "10.48550/arXiv.2604.25237"
+  url: "https://arxiv.org/abs/2604.25237"
