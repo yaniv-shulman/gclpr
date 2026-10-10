@@ -191,10 +191,6 @@ latexmk -pdf -interaction=nonstopmode -halt-on-error gclpr.tex
 
 The generated PDF is written to `paper/gclpr.pdf` during the build process.
 
-## Notes on Notebooks
-
-Notebook-based workflows are no longer part of the maintained execution path. The experiment runners and paper figures are the source of truth for reproducibility.
-
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
