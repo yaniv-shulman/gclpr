@@ -197,4 +197,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-This repository is released under the [MIT License](LICENSE).
+Original software in this repository is released under the [MIT License](LICENSE). Third-party materials retain their respective licenses; in particular, `paper/elsarticle.cls` is distributed under the LaTeX Project Public License as stated in its file header.
