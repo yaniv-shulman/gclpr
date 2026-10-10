@@ -8,6 +8,8 @@ This repository is primarily a research-reproducibility codebase for the GC-LPR 
 - prefer reproducibility over convenience
 - avoid adding secondary execution paths that drift from the maintained runners
 
+Contributions to the paper are also welcome, including corrections, clearer explanations, improvements to figures, and extensions to the theory and experiments.
+
 ## Development Setup
 
 1. Install Poetry.
